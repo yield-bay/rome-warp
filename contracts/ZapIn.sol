@@ -1,5 +1,9 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-contract ZapIn {}
+
+
+contract ZapIn {
+  constructor(address _router, address _factory){  }
+}
 
