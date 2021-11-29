@@ -30,7 +30,7 @@ contract ZapIn {
     require(LPBought >= minimumLPBought, "HIGH_SLIPPAGE");
   }
 
-  function _zapIn(address fromToken, address toPool, uint256 amountToZap) returns (uint256 LPBought) {
+  function _zapIn(address fromToken, address toPool, uint256 amountToZap) internal returns (uint256 LPBought) {
 
     // Find the tokens in the pair.
     (address token0, address token1) = _fetchTokensFromPair(toPool);
@@ -45,7 +45,7 @@ contract ZapIn {
     
     // to silence errors while the function is WIP
     LPBought = 0;
-  }
+  }  
 
   function _convertToIntermediate(address from,address token0, address token1, uint256 amount) internal returns (address intermediateToken,uint256 intermediateAmount) {
     intermediateToken = _findIntermediate(from, token0, token1);
@@ -60,17 +60,9 @@ contract ZapIn {
       return;
     }
 
-    address pair = solarFactory.getPair(token0, token1);
-    require(pair != address(0), "CANT_SWAP");
+    intermediateAmount= _swapTokens(from, intermediateToken, amount);
 
-    address[] memory swapPath = new address[](2);
-    path[0] = from;
-    path[1] = intermediateToken;
-
-    _approveToken(from, address(solarRouter), amount);
-    intermediateAmount = solarRouter.swapExactTokensForTokens(amount, 1, swapPath, address(this), block.timestamp)[path.length-1];
-
-    require(intermediateAmount > 0, "CANT_SWAP");
+    
   }
 
   function _findIntermediate(address fromToken, address token0, address token1) internal view returns (address intermediate) {
@@ -112,5 +104,22 @@ contract ZapIn {
         IERC20(token).safeApprove(spender, amount);
     }
 
+  function _swapTokens(address from, address to, uint256 amount) internal returns (uint256 amountBought) {
+    
+    address pair = solarFactory.getPair(token0, token1);
+    require(pair != address(0), "NO_PAIR");
+
+    address[] memory path = new address[](2);
+    path[0] = from;
+    path[1] = to;
+
+    _approveToken(from, address(solarRouter), amount);
+
+    (, amountBought) = solarRouter.swapExactTokensForTokens(amount, 1, path, address(this), block.timestamp);
+    require(amountBought > 0, "SWAP_FAILED");
+  }
+
 }
+
+
 
