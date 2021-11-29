@@ -30,22 +30,44 @@ contract ZapIn {
     require(LPBought >= minimumLPBought, "HIGH_SLIPPAGE");
   }
 
-  function _zapIn(address fromToken, address toPool, uint256 amountToZap) internal returns (uint256 LPBought) {
+  function _zapIn(address fromToken, address toPool, uint256 amountToZap) internal returns (uint256) {
 
     // Find the tokens in the pair.
     (address token0, address token1) = _fetchTokensFromPair(toPool);
 
     // Swap to intermediate token
     (address intermediate, uint256 intermediateAmount) = _convertToIntermediate(fromToken, token0, token1, amountToZap);
-
-
-    // Swap intermediate token to token0, and token1. 
-
-    // Deposit liquidity in SolarBeam
     
-    // to silence errors while the function is WIP
-    LPBought = 0;
+    // Swap intermediate token to token0, and token1.
+    (uint256 token0Amount, uint256 token1Amount) = _swapIntermediateToTarget(intermediate, token0, token1, intermediateAmount);
+
+
+    // Add liquidity
+    return _addLiquidityForPair(token0, token1, token0Amount, token1Amount);
   }  
+
+  function _addLiquidityForPair(address token0, address token1, uint256 token0Amount, uint256 token1Amount) internal returns (uint256 LPBought) {
+    _approveToken(token0, address(solarRouter), token0Amount);
+    _approveToken(token0, address(solarRouter), token1Amount);
+
+    (uint256 amount0, uint256 amount1, uint256 LPBought) = solarRouter.addLiquidity(token0, token1, token0Amount, token1Amount, 1, 1, address(this), block.timestamp);
+
+    if(token0Amount - amount0 > 0) {
+      IERC20Solar(token0).transfer(msg.sender, token0Amount - amount0);
+    }
+
+    if(token1Amount - amount1 > 0){
+      IERC20Solar(token1).transfer(msg.sender, token1Amount - amount1);
+    }
+
+    return LPBought;
+
+  }
+
+  function _swapIntermediateToTarget(address from, address token0, address token1, uint256 amount) internal returns(uint256 token0Amount, uint256 token1Amount) {
+    token0Amount = _swapTokens(from, token0, amount / 2);
+    token1Amount = _swapTokens(from, token1, amount / 2);
+  }
 
   function _convertToIntermediate(address from,address token0, address token1, uint256 amount) internal returns (address intermediateToken,uint256 intermediateAmount) {
     intermediateToken = _findIntermediate(from, token0, token1);
@@ -105,7 +127,7 @@ contract ZapIn {
     }
 
   function _swapTokens(address from, address to, uint256 amount) internal returns (uint256 amountBought) {
-    
+
     address pair = solarFactory.getPair(token0, token1);
     require(pair != address(0), "NO_PAIR");
 
@@ -120,6 +142,7 @@ contract ZapIn {
   }
 
 }
+
 
 
 
