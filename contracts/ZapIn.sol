@@ -10,13 +10,13 @@ import "./interface/solarbeam/IWETH.sol";
 contract ZapIn {
   ISolarRouter02 public solarRouter;
   ISolarFactory public solarFactory;
-  IWETH public wMOVR;
+  address public wMOVR;
   
 
   constructor(address _router, address _factory, address _wMOVR) { 
     SolarRouter = ISolarRouter02(_router);
     SolarFactory = ISolarFactory(_factory);
-    wMOVR = IWETH(_wMOVR);
+    wMOVR = _wMOVR;
   }
 
   // Based on the approach documented here: https://hackmd.io/@oaoDb2ChTHidBQox6JlJ7g/rkO1bDytY
@@ -32,21 +32,57 @@ contract ZapIn {
 
   function _zapIn(address fromToken, address toPool, uint256 amountToZap) returns (uint256 LPBought) {
 
-    // 1. Find the tokens in the pair.
-    // (address token0, address token1) = _fetchTokensFromPair(toPool);
+    // Find the tokens in the pair.
+    (address token0, address token1) = _fetchTokensFromPair(toPool);
 
-    // 2. Calculate the intermediate token.
-
-
-    // 3. Swap to intermediate token.
+    // Swap to intermediate token
+    (address intermediate, uint256 intermediateAmount) = _convertToIntermediate(fromToken, token0, token1, amountToZap);
 
 
-    // 4. Swap intermediate token to token0, and token1. 
+    // Swap intermediate token to token0, and token1. 
 
-    // 5. Deposit liquidity in SolarBeam
+    // Deposit liquidity in SolarBeam
     
     // to silence errors while the function is WIP
     LPBought = 0;
+  }
+
+  function _convertToIntermediate(address from,address token0, address token1, uint256 amount) internal returns (address intermediateToken,uint256 intermediateAmount) {
+    intermediateToken = _findIntermediate(from, token0, token1);
+
+    if(from == address(0) && intermediateToken == wMOVR) {
+      IWETH(wMOVR).deposit{value: amount}();
+      return;
+    }
+
+    if(from == intermediateToken) {
+      intermediateAmount = amount;
+      return;
+    }
+
+    address pair = solarFactory.getPair(token0, token1);
+    require(pair != address(0), "CANT_SWAP");
+
+    address[] memory swapPath = new address[](2);
+    path[0] = from;
+    path[1] = intermediateToken;
+
+    _approveToken(from, address(solarRouter), amount);
+    intermediateAmount = solarRouter.swapExactTokensForTokens(amount, 1, swapPath, address(this), block.timestamp)[path.length-1];
+
+    require(intermediateAmount > 0, "CANT_SWAP");
+  }
+
+  function _findIntermediate(address fromToken, address token0, address token1) internal view returns (address intermediate) {
+    if(fromToken == address(0)) {
+      intermediate = wMOVR;
+    } else {
+      if(token0 == fromToken || token1 == fromToken) {
+        intermediate = fromToken;
+      } else {
+        intermediate = wMOVR;
+      }
+    }
   }
 
   function _transferTokenToContract(address fromToken, uint256 amountToTransfer) internal {
@@ -67,6 +103,14 @@ contract ZapIn {
     token1 = solarPair.token1();
   }
   
+  function _approveToken(
+        address token,
+        address spender,
+        uint256 amount
+    ) internal {
+        IERC20(token).safeApprove(spender, 0);
+        IERC20(token).safeApprove(spender, amount);
+    }
 
 }
 
