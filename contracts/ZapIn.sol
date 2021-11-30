@@ -7,23 +7,42 @@ import "./interface/solarbeam/ISolarRouter02.sol";
 import "./interface/solarbeam/IERC20.sol";
 import "./interface/solarbeam/IWETH.sol";
 
-contract ZapIn {
+/*
+TODO:
+  [*] Refactor function ordering
+  [ ] Comments
+  [ ] Test forking Moonriver's mainnet
+  [ ] Test deploying on Moonriver's locally forked mainnet
+  [ ] Test the flow with Moonriver's forked mainnet
+  [ ] Identify the common functionality with ZapOut.sol
+  [ ] Create ZapBase.sol
+  [ ] Inherit from ZapBase.sol
+  [ ] Implement ZapOut.sol
+  [ ] NatSpec comments
+*/
+
+contract ZapInV1 {
+
+  // SolarBeam contracts
   ISolarRouter02 public solarRouter;
   ISolarFactory public solarFactory;
+  
   address public wMOVR;
   
 
   constructor(address _router, address _factory, address _wMOVR) { 
-    SolarRouter = ISolarRouter02(_router);
-    SolarFactory = ISolarFactory(_factory);
+    solarRouter = ISolarRouter02(_router);
+    solarFactory = ISolarFactory(_factory);
     wMOVR = _wMOVR;
   }
 
   // Based on the approach documented here: https://hackmd.io/@oaoDb2ChTHidBQox6JlJ7g/rkO1bDytY
-  function ZapIn(address fromToken, address toPool, uint256 amountToZap, uint256 minimumLPBought) public returns (uint256 LPBought) {
+  function zapIn(address fromToken, address toPool, uint256 amountToZap, uint256 minimumLPBought) public returns (uint256 LPBought) {
 
-    _transferTokenToContract(fromToken, amountToTransfer);
+    // transfer the user's address to the contract
+    _transferTokenToContract(fromToken, amountToZap);
 
+    // Zap in from `fromToken`, to `toPool`.
     LPBought = _zapIn(fromToken, toPool, amountToZap);
 
     // Revert is LPBought is lesser than minimumLPBought due to high slippage.
@@ -46,16 +65,22 @@ contract ZapIn {
     return _addLiquidityForPair(token0, token1, token0Amount, token1Amount);
   }  
 
-  function _addLiquidityForPair(address token0, address token1, uint256 token0Amount, uint256 token1Amount) internal returns (uint256 LPBought) {
+  function _addLiquidityForPair(address token0, address token1, uint256 token0Amount, uint256 token1Amount) internal returns (uint256) {
+    // Approve the tokens
     _approveToken(token0, address(solarRouter), token0Amount);
-    _approveToken(token0, address(solarRouter), token1Amount);
+    _approveToken(token1, address(solarRouter), token1Amount);
 
+
+    // Add liquidity to the token0 & token1 pair
     (uint256 amount0, uint256 amount1, uint256 LPBought) = solarRouter.addLiquidity(token0, token1, token0Amount, token1Amount, 1, 1, address(this), block.timestamp);
 
+    
+    // Transfer the residual token0 amount back to the user
     if(token0Amount - amount0 > 0) {
       IERC20Solar(token0).transfer(msg.sender, token0Amount - amount0);
     }
 
+    // Transfer the residual token1 amount back to the user
     if(token1Amount - amount1 > 0){
       IERC20Solar(token1).transfer(msg.sender, token1Amount - amount1);
     }
@@ -65,80 +90,94 @@ contract ZapIn {
   }
 
   function _swapIntermediateToTarget(address from, address token0, address token1, uint256 amount) internal returns(uint256 token0Amount, uint256 token1Amount) {
+    // Swap half of amount to token0, and rest half to token1
     token0Amount = _swapTokens(from, token0, amount / 2);
     token1Amount = _swapTokens(from, token1, amount / 2);
   }
 
   function _convertToIntermediate(address from,address token0, address token1, uint256 amount) internal returns (address intermediateToken,uint256 intermediateAmount) {
+    // Intermediate token is the one the zap is routed through. 
     intermediateToken = _findIntermediate(from, token0, token1);
-
-    if(from == address(0) && intermediateToken == wMOVR) {
-      IWETH(wMOVR).deposit{value: amount}();
-      return;
-    }
-
-    if(from == intermediateToken) {
-      intermediateAmount = amount;
-      return;
-    }
-
-    intermediateAmount= _swapTokens(from, intermediateToken, amount);
-
     
-  }
-
-  function _findIntermediate(address fromToken, address token0, address token1) internal view returns (address intermediate) {
-    if(fromToken == address(0)) {
-      intermediate = wMOVR;
+    // If from is address(0), it is $MOVR. 
+    if(from == address(0) && intermediateToken == wMOVR) {
+      // Convert $MOVR to $wMOVR
+      IWETH(wMOVR).deposit{value: amount}();
+      intermediateAmount = amount;
+    }
+    else if(from == intermediateToken) {
+      // If `from` is the same as `intermediateToken`: `from` is the intermediate.
+      intermediateAmount = amount;
     } else {
-      if(token0 == fromToken || token1 == fromToken) {
-        intermediate = fromToken;
-      } else {
-        intermediate = wMOVR;
-      }
+      // Convert `from` to the `intermediateToken`
+      intermediateAmount= _swapTokens(from, intermediateToken, amount);
     }
   }
 
-  function _transferTokenToContract(address fromToken, uint256 amountToTransfer) internal {
-    require(amountToTransfer > 0, "INVALID_AMOUNT");
+  function _transferTokenToContract(address from, uint256 amount) internal {
+
+    require(amount > 0, "INVALID_AMOUNT");
+    
     // If fromToken is zero address, transfer $MOVR
-    if(fromToken == address(0)) {
-      require(amountToTransfer == msg.value, "MOVR_NEQ_AMOUNT");      
+    if(from == address(0)) {
+      require(amount == msg.value, "MOVR_NEQ_AMOUNT");      
       return;
     }
 
-    IERC20Solar(fromToken).transferFrom(msg.sender, address(this), amountToTransfer);
+    IERC20Solar(from).transferFrom(msg.sender, address(this), amount);
   }
 
-  function _fetchTokensFromPair(address pair) internal returns (address token0, address token1) {
-    ISolarPair solarPair = ISolarPair(pair);
-
-    token0 = solarPair.token0();
-    token1 = solarPair.token1();
-  }
+  
   
   function _approveToken(
         address token,
         address spender,
         uint256 amount
     ) internal {
-        IERC20(token).safeApprove(spender, 0);
-        IERC20(token).safeApprove(spender, amount);
+        // Set Approval back to 0.
+        IERC20Solar(token).approve(spender, 0);
+
+        // Then, set Approval to the exact amount required. 
+        IERC20Solar(token).approve(spender, amount);
     }
 
-  function _swapTokens(address from, address to, uint256 amount) internal returns (uint256 amountBought) {
 
-    address pair = solarFactory.getPair(token0, token1);
+  function _swapTokens(address from, address to, uint256 amount) internal returns (uint256 amountBought) {
+    // Find the pair address of the tokens that need to be swapped between.
+    address pair = solarFactory.getPair(from, to);
+    // If address is 0, no pair exists for the tokens.
     require(pair != address(0), "NO_PAIR");
 
+    // Path for the swap.
     address[] memory path = new address[](2);
     path[0] = from;
     path[1] = to;
 
+    // Approve the solarRouter to spend the contract's `from` token.
     _approveToken(from, address(solarRouter), amount);
 
-    (, amountBought) = solarRouter.swapExactTokensForTokens(amount, 1, path, address(this), block.timestamp);
+    // Swap the tokens through solarRouter
+    amountBought = solarRouter.swapExactTokensForTokens(amount, 1, path, address(this), block.timestamp)[path.length - 1];
     require(amountBought > 0, "SWAP_FAILED");
+  }
+
+  function _findIntermediate(address from, address token0, address token1) internal view returns (address intermediate) {
+    if(from == address(0)) {
+      intermediate = wMOVR;
+    } else {
+      if(token0 == from || token1 == from) {
+        intermediate = from;
+      } else {
+        intermediate = wMOVR;
+      }
+    }
+  }
+
+  function _fetchTokensFromPair(address pair) internal view returns (address token0, address token1) {
+    ISolarPair solarPair = ISolarPair(pair);
+
+    token0 = solarPair.token0();
+    token1 = solarPair.token1();
   }
 
 }
