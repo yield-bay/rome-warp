@@ -10,9 +10,9 @@ import "./interface/solarbeam/IWETH.sol";
 /*
 TODO:
   [*] Refactor function ordering
-  [ ] Comments
-  [ ] Test forking Moonriver's mainnet
-  [ ] Test deploying on Moonriver's locally forked mainnet
+  [*] Comments
+  [*] Test forking Moonriver's mainnet
+  [*] Test deploying on Moonriver's locally forked mainnet
   [ ] Test the flow with Moonriver's forked mainnet
   [ ] Identify the common functionality with ZapOut.sol
   [ ] Create ZapBase.sol
