@@ -1,5 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const BN = require("bn.js");
 
 const SolarERC20 = require("../artifacts/contracts/interface/solarbeam/ISolarERC20.sol/ISolarERC20.json");
 const SolarRouter = require("../artifacts/contracts/interface/solarbeam/ISolarRouter02.sol/ISolarRouter02.json");
@@ -21,13 +22,6 @@ describe("ZapInV1 Test", function () {
   let pairs = {};
 
   beforeEach(async function () {
-    /**
-     * What all do I require to zap-in?
-     * 1. Address of token to zap from
-     * 2. Address of pool to zap to
-     * 3. Address of the router, factory, and wmovr
-     */
-    console.log("This'll run before each test");
     console.log("Deploying ZapIn.sol");
     const ZapInFactory = await ethers.getContractFactory("ZapInV1");
     ZapIn = await ZapInFactory.deploy(ROUTER, FACTORY, WMOVR);
@@ -37,7 +31,11 @@ describe("ZapInV1 Test", function () {
 
     router = new ethers.Contract(ROUTER, SolarRouter.abi, ethers.provider);
     factory = new ethers.Contract(FACTORY, SolarFactory.abi, ethers.provider);
-    pairs["FRAX_WMOVR"] = await factory.getPair(WMOVR, FRAX);
+    pairs["FRAX_WMOVR"] = new ethers.Contract(
+      await factory.getPair(WMOVR, FRAX),
+      SolarPair.abi,
+      ethers.provider
+    );
   });
 
   it("Fetch WMOVR balance", async () => {
@@ -47,6 +45,25 @@ describe("ZapInV1 Test", function () {
       ${ethers.utils.formatUnits(
         await wmovr.balanceOf("0xF3616d8Cc52C67E7F0991a0A3C6dB9F5025fA60C")
       )} WMOVR`);
-    console.log(pairs);
   });
 });
+
+async function calculateMinimumLP(router, pair, amountToken0, amountToken1) {
+  /**
+   * LP Tokens received ->
+   * Minimum of the following -
+   *  1. (amount0 * totalSupply) / reserve0
+   *  2. (amount1 * totalSupply) / reserve1
+   */
+
+  amount0BN = ethers.BigNumber.from(amountToken0);
+  amount1BN = ethers.BigNumber.from(amountToken1);
+
+  const { reserve0, reserve1 } = await pair.getReserves();
+  const totalSupply = await pair.totalSupply();
+
+  const value0 = amount0BN.mul(totalSupply).div(reserve0);
+  const value1 = amount1BN.mul(totalSupply).div(reserve1);
+  console.log(value0.toString(), value1.toString());
+  return value0.lt(value1) ? value0 : value1;
+}
