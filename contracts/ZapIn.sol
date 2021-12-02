@@ -7,19 +7,7 @@ import "./interface/solarbeam/ISolarRouter02.sol";
 import "./interface/solarbeam/IERC20.sol";
 import "./interface/solarbeam/IWETH.sol";
 
-/*
-TODO:
-  [*] Refactor function ordering
-  [*] Comments
-  [*] Test forking Moonriver's mainnet
-  [*] Test deploying on Moonriver's locally forked mainnet
-  [ ] Test the flow with Moonriver's forked mainnet
-  [ ] Identify the common functionality with ZapOut.sol
-  [ ] Create ZapBase.sol
-  [ ] Inherit from ZapBase.sol
-  [ ] Implement ZapOut.sol
-  [ ] NatSpec comments
-*/
+
 
 contract ZapInV1 {
 
