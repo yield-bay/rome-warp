@@ -7,6 +7,8 @@ import "./interface/solarbeam/ISolarRouter02.sol";
 import "./interface/solarbeam/IERC20.sol";
 import "./interface/solarbeam/IWETH.sol";
 
+import "hardhat/console.sol";
+
 
 
 contract ZapInV1 {
@@ -25,13 +27,15 @@ contract ZapInV1 {
   }
 
   // Based on the approach documented here: https://hackmd.io/@oaoDb2ChTHidBQox6JlJ7g/rkO1bDytY
-  function zapIn(address fromToken, address toPool, uint256 amountToZap, uint256 minimumLPBought) public returns (uint256 LPBought) {
-
+  function zapIn(address fromToken, address toPool, uint256 amountToZap, uint256 minimumLPBought) public payable returns (uint256 LPBought) {
+    
     // transfer the user's address to the contract
     _transferTokenToContract(fromToken, amountToZap);
 
     // Zap in from `fromToken`, to `toPool`.
     LPBought = _zapIn(fromToken, toPool, amountToZap);
+    console.log("Minimum LP was: %s", minimumLPBought);
+    console.log("LP Bought: %s", LPBought);
 
     // Revert is LPBought is lesser than minimumLPBought due to high slippage.
     require(LPBought >= minimumLPBought, "HIGH_SLIPPAGE");
@@ -41,13 +45,18 @@ contract ZapInV1 {
 
     // Find the tokens in the pair.
     (address token0, address token1) = _fetchTokensFromPair(toPool);
+    
 
     // Swap to intermediate token
     (address intermediate, uint256 intermediateAmount) = _convertToIntermediate(fromToken, token0, token1, amountToZap);
+    console.log("Intermediate is %s", intermediate);
+    console.log("Intermediate amount is %s", intermediateAmount);
+    
     
     // Swap intermediate token to token0, and token1.
     (uint256 token0Amount, uint256 token1Amount) = _swapIntermediateToTarget(intermediate, token0, token1, intermediateAmount);
-
+    console.log("Token0: %s; Token1: %s", token0Amount, token1Amount);
+    
 
     // Add liquidity
     return _addLiquidityForPair(token0, token1, token0Amount, token1Amount);
@@ -60,9 +69,9 @@ contract ZapInV1 {
 
 
     // Add liquidity to the token0 & token1 pair
-    (uint256 amount0, uint256 amount1, uint256 LPBought) = solarRouter.addLiquidity(token0, token1, token0Amount, token1Amount, 1, 1, address(this), block.timestamp);
-
+    (uint256 amount0, uint256 amount1, uint256 LPBought) = solarRouter.addLiquidity(token0, token1, token0Amount, token1Amount, 1, 1, msg.sender, block.timestamp);
     
+
     // Transfer the residual token0 amount back to the user
     if(token0Amount - amount0 > 0) {
       IERC20Solar(token0).transfer(msg.sender, token0Amount - amount0);
@@ -74,13 +83,23 @@ contract ZapInV1 {
     }
 
     return LPBought;
-
   }
 
   function _swapIntermediateToTarget(address from, address token0, address token1, uint256 amount) internal returns(uint256 token0Amount, uint256 token1Amount) {
+    require(token0 != token1, "TOKEN0_TOKEN1_SAME");
+
     // Swap half of amount to token0, and rest half to token1
-    token0Amount = _swapTokens(from, token0, amount / 2);
-    token1Amount = _swapTokens(from, token1, amount / 2);
+    if(from == token0){
+      token0Amount = amount / 2;
+    } else {
+      token0Amount = _swapTokens(from, token0, amount / 2);
+    }
+
+    if(from == token1) {
+      token1Amount = amount / 2;
+    } else {
+      token1Amount = _swapTokens(from, token1, amount / 2);
+    }
   }
 
   function _convertToIntermediate(address from,address token0, address token1, uint256 amount) internal returns (address intermediateToken,uint256 intermediateAmount) {
@@ -132,9 +151,11 @@ contract ZapInV1 {
 
   function _swapTokens(address from, address to, uint256 amount) internal returns (uint256 amountBought) {
     // Find the pair address of the tokens that need to be swapped between.
+    
     address pair = solarFactory.getPair(from, to);
     // If address is 0, no pair exists for the tokens.
     require(pair != address(0), "NO_PAIR");
+    
 
     // Path for the swap.
     address[] memory path = new address[](2);
