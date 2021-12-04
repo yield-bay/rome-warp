@@ -35,15 +35,6 @@ describe("ZapInV1 Test", function () {
     factory = new ethers.Contract(FACTORY, SolarFactory.abi, ethers.provider);
   });
 
-  // it("Fetch WMOVR balance", async () => {
-  //   const wmovr = new ethers.Contract(WMOVR, SolarERC20.abi, ethers.provider);
-
-  //   console.log(`
-  //     ${ethers.utils.formatUnits(
-  //       await wmovr.balanceOf("0xF3616d8Cc52C67E7F0991a0A3C6dB9F5025fA60C")
-  //     )} WMOVR`);
-  // });
-
   it("ZapIn from $MOVR to WMOVR-FRAX LP", async () => {
     const signer = signers[0];
     const PAIR_ADDRESS = await factory.getPair(WMOVR, FRAX);
@@ -96,6 +87,57 @@ describe("ZapInV1 Test", function () {
       ).toString()}`
     );
   });
+
+  it("ZapIn from $FRAX to WMOVR-FRAX LP", async () => {
+    const signer = signers[0];
+    const PAIR_ADDRESS = await factory.getPair(WMOVR, FRAX);
+    const LP_PAIR = makePair(PAIR_ADDRESS);
+    // $MOVR amount to invest.
+    const amountToInvest = ethers.BigNumber.from(
+      ethers.utils.parseEther("0.002")
+    );
+
+    // Convert $MOVR to $FRAX
+    await router
+      .connect(signer)
+      .swapExactETHForTokens(1, [WMOVR, FRAX], signer.address, "1638921156", {
+        value: amountToInvest,
+      });
+
+    // FRAX token address
+    const FraxToken = makeToken(FRAX);
+
+    let fraxBalance = await FraxToken.balanceOf(signer.address);
+    console.log("Signer's $FRAX Balance: ", fraxBalance.toString());
+
+    // Individual token amounts to invest
+    const amount0 = fraxBalance.div(2);
+    const amount1 = await getAmountsOut(router, fraxBalance.div(2), [
+      FRAX,
+      WMOVR,
+    ]);
+
+    const minLP = await calculateMinimumLP(LP_PAIR, amount0, amount1, 3);
+
+    console.log(
+      `Signer LP Balance before tx ${(
+        await LP_PAIR.balanceOf(signer.address)
+      ).toString()}`
+    );
+
+    // Approve the ZapIn contract to spend the users' $FRAX
+    await FraxToken.connect(signer).approve(ZapIn.address, fraxBalance);
+    // zapIn(address fromToken, address toPool, uint256 amountToZap, uint256 minimumLPBought)
+    await ZapIn.zapIn(FRAX, PAIR_ADDRESS, fraxBalance, minLP);
+
+    console.log(
+      `Signer LP Balance after tx ${(
+        await LP_PAIR.balanceOf(signer.address)
+      ).toString()}`
+    );
+    fraxBalance = await FraxToken.balanceOf(signer.address);
+    console.log("Signer's $FRAX Balance after ZapIn: ", fraxBalance.toString());
+  });
 });
 
 async function calculateMinimumLP(pair, amount0, amount1, slippage) {
@@ -120,6 +162,10 @@ async function calculateMinimumLP(pair, amount0, amount1, slippage) {
 
 function makePair(PAIR_ADDRESS) {
   return new ethers.Contract(PAIR_ADDRESS, SolarPair.abi, ethers.provider);
+}
+
+function makeToken(TOKEN) {
+  return new ethers.Contract(TOKEN, SolarERC20.abi, ethers.provider);
 }
 
 async function getAmountsOut(router, amount, path) {
