@@ -47,11 +47,7 @@ describe("ZapInV1 Test", function () {
   it("ZapIn from $MOVR to WMOVR-FRAX LP", async () => {
     const signer = signers[0];
     const PAIR_ADDRESS = await factory.getPair(WMOVR, FRAX);
-    const LP_PAIR = new ethers.Contract(
-      PAIR_ADDRESS,
-      SolarPair.abi,
-      ethers.provider
-    );
+    const LP_PAIR = makePair(PAIR_ADDRESS);
 
     /**
      * 1. Find estimate of token0: wMOVR
@@ -62,23 +58,21 @@ describe("ZapInV1 Test", function () {
       ethers.utils.parseEther("0.002")
     );
 
-    // As $MOVR gets converted to $WMOVR 1:1
-    const token0Amount = amountToInvest.div(2);
-
     // Find MOVR <> FRAX
     const MOVR_FRAX_PATH = [WMOVR, FRAX];
-    const token1Amount = (
-      await router.getAmountsOut(
-        amountToInvest.div(2),
-        MOVR_FRAX_PATH,
-        SOLAR_FEE
-      )
-    )[MOVR_FRAX_PATH.length - 1];
+    const token0Amount = await getAmountsOut(
+      router,
+      amountToInvest.div(2),
+      MOVR_FRAX_PATH
+    );
+
+    // As $MOVR gets converted to $WMOVR 1:1
+    const token1Amount = amountToInvest.div(2);
 
     const minLP = await calculateMinimumLP(
       LP_PAIR,
-      token1Amount,
       token0Amount,
+      token1Amount,
       3
     );
 
@@ -122,4 +116,17 @@ async function calculateMinimumLP(pair, amount0, amount1, slippage) {
 
   // `slippage` should be a number between 0 & 100.
   return minLP.mul(100 - slippage).div(100);
+}
+
+function makePair(PAIR_ADDRESS) {
+  return new ethers.Contract(PAIR_ADDRESS, SolarPair.abi, ethers.provider);
+}
+
+async function getAmountsOut(router, amount, path) {
+  const amountsOut = await router.getAmountsOut(amount, path, SOLAR_FEE);
+  return amountsOut[path.length - 1];
+}
+
+function sortTokens(token0, token1) {
+  return token0 < token1 ? [token0, token1] : [token1, token0];
 }
