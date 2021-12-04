@@ -138,6 +138,15 @@ describe("ZapInV1 Test", function () {
     fraxBalance = await FraxToken.balanceOf(signer.address);
     console.log("Signer's $FRAX Balance after ZapIn: ", fraxBalance.toString());
   });
+
+  // TODO
+  it("ZapIn from $MOVR to FRAX-ROME LP", async () => {});
+
+  // TODO
+  it("ZapIn from $USDC to WMOVR-FRAX LP", async () => {});
+
+  // TODO
+  it("ZapIn from $USDC to FRAX-ROME LP", async () => {});
 });
 
 async function calculateMinimumLP(pair, amount0, amount1, slippage) {
