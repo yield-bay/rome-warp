@@ -1,6 +1,5 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const BN = require("bn.js");
 
 const SolarERC20 = require("../artifacts/contracts/interface/solarbeam/ISolarERC20.sol/ISolarERC20.json");
 const SolarRouter = require("../artifacts/contracts/interface/solarbeam/ISolarRouter02.sol/ISolarRouter02.json");
@@ -20,6 +19,12 @@ const BNB = "0x2bf9b864cdc97b08b6d79ad4663e71b8ab65c45c";
 const BUSD = "0x5d9ab5522c64e1f6ef5e3627eccc093f56167818";
 
 const SOLAR_FEE = 25;
+
+/**
+ * Condition for selecting tokens
+ * • Both the tokens in the pool should've a direct route with MOVR
+ * • Token you're zapping in from, should've a direct route with MOVR
+ */
 
 describe("ZapInV1 Test", function () {
   let ZapIn;
