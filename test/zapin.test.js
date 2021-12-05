@@ -14,6 +14,10 @@ const FACTORY = "0x049581aEB6Fe262727f290165C29BDAB065a1B68";
 // Tokens
 const WMOVR = "0x98878b06940ae243284ca214f92bb71a2b032b8a";
 const FRAX = "0x1a93b23281cc1cde4c4741353f3064709a16197d";
+const MATIC = "0x682f81e57eaa716504090c3ecba8595fb54561d8";
+const SOLAR = "0x6bD193Ee6D2104F14F94E2cA6efefae561A4334B";
+const BNB = "0x2bf9b864cdc97b08b6d79ad4663e71b8ab65c45c";
+const BUSD = "0x5d9ab5522c64e1f6ef5e3627eccc093f56167818";
 
 const SOLAR_FEE = 25;
 
@@ -140,7 +144,46 @@ describe("ZapInV1 Test", function () {
   });
 
   // TODO
-  it("ZapIn from $MOVR to FRAX-ROME LP", async () => {});
+  it("ZapIn from $MOVR to BNB-BUSD LP", async () => {
+    const signer = signers[0];
+    const PAIR_ADDRESS = await factory.getPair(BNB, BUSD);
+    const LP_PAIR = makePair(PAIR_ADDRESS);
+    // $MOVR amount to invest.
+    const movrToInvest = ethers.BigNumber.from(ethers.utils.parseEther("20"));
+    const amountsOut = {};
+    amountsOut[BNB] = await getAmountsOut(router, movrToInvest.div(2), [
+      WMOVR,
+      BNB,
+    ]);
+
+    amountsOut[BUSD] = await getAmountsOut(router, movrToInvest.div(2), [
+      WMOVR,
+      BUSD,
+    ]);
+
+    console.log("BNB Amount", amountsOut[BNB].toString());
+    console.log("BUSD Amount", amountsOut[BUSD].toString());
+    const tokens = sortTokens(BNB, BUSD);
+    const minLP = await calculateMinimumLP(
+      LP_PAIR,
+      amountsOut[tokens[0]],
+      amountsOut[tokens[1]],
+      5
+    );
+    // zapIn(address fromToken, address toPool, uint256 amountToZap, uint256 minimumLPBought)
+    let lpBalance = await LP_PAIR.balanceOf(signer.address);
+    console.log("LP Balance before Zap", lpBalance.toString());
+    await ZapIn.zapIn(
+      ethers.constants.AddressZero,
+      PAIR_ADDRESS,
+      movrToInvest,
+      minLP,
+      { value: movrToInvest }
+    );
+
+    lpBalance = await LP_PAIR.balanceOf(signer.address);
+    console.log("LP Balance after the Zap", lpBalance.toString());
+  });
 
   // TODO
   it("ZapIn from $USDC to WMOVR-FRAX LP", async () => {});
