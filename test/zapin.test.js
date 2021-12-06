@@ -191,10 +191,61 @@ describe("ZapInV1 Test", function () {
   });
 
   // TODO
-  it("ZapIn from $USDC to WMOVR-FRAX LP", async () => {});
+  it("ZapIn from $MATIC to WMOVR-FRAX LP", async () => {
+    const signer = signers[0];
+    const PAIR_ADDRESS = await factory.getPair(WMOVR, FRAX);
+    const LP_PAIR = makePair(PAIR_ADDRESS);
+
+    const movrToInvest = ethers.BigNumber.from(
+      ethers.utils.parseEther("0.002")
+    );
+
+    await router
+      .connect(signer)
+      .swapExactETHForTokens(1, [WMOVR, MATIC], signer.address, "1638921156", {
+        value: movrToInvest,
+      });
+
+    const Matic = makeToken(MATIC);
+
+    let maticBalance = await Matic.balanceOf(signer.address);
+
+    const amountsOut = {};
+
+    amountsOut[WMOVR] = await getAmountsOut(router, maticBalance.div(2), [
+      MATIC,
+      WMOVR,
+    ]);
+
+    amountsOut[FRAX] = await getAmountsOut(router, maticBalance.div(2), [
+      MATIC,
+      WMOVR,
+      FRAX,
+    ]);
+    const tokens = sortTokens(WMOVR, FRAX);
+
+    const minLP = await calculateMinimumLP(
+      LP_PAIR,
+      amountsOut[tokens[0]],
+      amountsOut[tokens[1]],
+      5
+    );
+
+    let lpBalance = await LP_PAIR.balanceOf(signer.address);
+    console.log("MATIC balance before zap:", maticBalance.toString());
+    console.log(`LP Balance before zap: ${lpBalance.toString()}`);
+    await Matic.connect(signer).approve(ZapIn.address, maticBalance);
+    // zapIn(address fromToken, address toPool, uint256 amountToZap, uint256 minimumLPBought)
+    await ZapIn.zapIn(MATIC, PAIR_ADDRESS, maticBalance, minLP);
+    lpBalance = await LP_PAIR.balanceOf(signer.address);
+    console.log(`LP Balance after zap: ${lpBalance.toString()}`);
+
+    maticBalance = await Matic.balanceOf(signer.address);
+    console.log(`MATIC Balance after zap: ${maticBalance.toString()}`);
+  });
 
   // TODO
-  it("ZapIn from $USDC to FRAX-ROME LP", async () => {});
+  // it("ZapIn from $USDC to FRAX-ROME LP", async () => {});
 });
 
 async function calculateMinimumLP(pair, amount0, amount1, slippage) {
