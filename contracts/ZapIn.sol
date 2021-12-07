@@ -7,11 +7,13 @@ import "./interface/solarbeam/ISolarRouter02.sol";
 import "./interface/solarbeam/IERC20.sol";
 import "./interface/solarbeam/IWETH.sol";
 
+import "./base/ZapBase.sol";
+
 import "hardhat/console.sol";
 
 
 
-contract ZapInV1 {
+contract ZapInV1 is ZapBaseV1 {
 
   // SolarBeam contracts
   ISolarRouter02 public solarRouter;
@@ -121,32 +123,11 @@ contract ZapInV1 {
     }
   }
 
-  function _transferTokenToContract(address from, uint256 amount) internal {
-
-    require(amount > 0, "INVALID_AMOUNT");
-    
-    // If fromToken is zero address, transfer $MOVR
-    if(from == address(0)) {
-      require(amount == msg.value, "MOVR_NEQ_AMOUNT");      
-      return;
-    }
-
-    IERC20Solar(from).transferFrom(msg.sender, address(this), amount);
-  }
+  
 
   
   
-  function _approveToken(
-        address token,
-        address spender,
-        uint256 amount
-    ) internal {
-        // Set Approval back to 0.
-        IERC20Solar(token).approve(spender, 0);
-
-        // Then, set Approval to the exact amount required. 
-        IERC20Solar(token).approve(spender, amount);
-    }
+  
 
 
   function _swapTokens(address from, address to, uint256 amount) internal returns (uint256 amountBought) {
@@ -182,12 +163,7 @@ contract ZapInV1 {
     }
   }
 
-  function _fetchTokensFromPair(address pair) internal view returns (address token0, address token1) {
-    ISolarPair solarPair = ISolarPair(pair);
-
-    token0 = solarPair.token0();
-    token1 = solarPair.token1();
-  }
+  
 
 }
 
