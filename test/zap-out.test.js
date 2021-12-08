@@ -9,14 +9,18 @@ const {
   calculateMinimumLP,
   makePair,
   bnDiv1e18,
+  makeToken,
 } = require("./lib/utils");
 
-describe("ZapOutV1 Test", function () {
+describe("ZapOutV1 Tests", function () {
   let ZapOut;
   let router;
   let factory;
   let signers;
   beforeEach(async function () {
+    console.log("");
+    console.log("---------------------------------");
+
     signers = await ethers.getSigners();
 
     // Deploy ZapOut contract.
@@ -70,11 +74,59 @@ describe("ZapOutV1 Test", function () {
       console.log("---- LP ADDED ----");
     });
 
-    it("1.", async () => {
-      console.log(LPBought.toString());
+    it("WMOVR<>FRAX -> MOVR", async () => {
+      const LPtoRemove = LPBought;
+
+      // Approve ZapOut contract to control the signer's LP tokens.
+      await LP_PAIR.connect(signer).approve(ZapOut.address, LPtoRemove);
+
+      // zapOut function sig: zapOut(address fromLP, address to, uint256 lpAmount, address[] memory path0, address[] memory path1)
+      await ZapOut.zapOut(
+        PAIR_ADDRESS, // address of the liquidity pool of FRAX & WMOVR
+        ethers.constants.AddressZero, // address(0) represents $MOVR
+        LPtoRemove, // amount of LP tokens to remove
+        [FRAX, WMOVR], // most effecient path of swapping FRAX -> WMOVR(which will be converted to MOVR)
+        [] // As token1 is $WMOVR, no path is required. It is converted to $MOVR using WETH
+      );
     });
-    it("2.", async () => {
-      console.log(LPBought.toString());
+    it("WMOVR<>FRAX -> WMOVR", async () => {
+      const LPtoRemove = LPBought;
+
+      // Approve ZapOut contract to control the signer's LP tokens.
+      await LP_PAIR.connect(signer).approve(ZapOut.address, LPtoRemove);
+
+      // zapOut function sig: zapOut(address fromLP, address to, uint256 lpAmount, address[] memory path0, address[] memory path1)
+      await ZapOut.zapOut(
+        PAIR_ADDRESS, // address of the liquidity pool of FRAX & WMOVR
+        WMOVR, // address(0) represents $MOVR
+        LPtoRemove, // amount of LP tokens to remove
+        [FRAX, WMOVR], // most effecient path of swapping FRAX -> WMOVR(which will be converted to MOVR)
+        [] // As token1 is $WMOVR, no path is required.
+      );
+
+      WmovrToken = makeToken(WMOVR);
+      wmovrBalance = await WmovrToken.balanceOf(signer.address);
+      console.log("WMOVR Balance:", wmovrBalance.toString());
+    });
+
+    it("WMOVR<>FRAX -> FRAX", async () => {
+      const LPtoRemove = LPBought;
+
+      // Approve ZapOut contract to control the signer's LP tokens.
+      await LP_PAIR.connect(signer).approve(ZapOut.address, LPtoRemove);
+
+      // zapOut function sig: zapOut(address fromLP, address to, uint256 lpAmount, address[] memory path0, address[] memory path1)
+      await ZapOut.zapOut(
+        PAIR_ADDRESS, // address of the liquidity pool of FRAX & WMOVR
+        FRAX, // address(0) represents $MOVR
+        LPtoRemove, // amount of LP tokens to remove
+        [], // most effecient path of swapping FRAX -> WMOVR(which will be converted to MOVR)
+        [WMOVR, FRAX] // As token1 is $WMOVR, no path is required.
+      );
+
+      FraxToken = makeToken(FRAX);
+      fraxBalance = await FraxToken.balanceOf(signer.address);
+      console.log("FRAX Balance:", fraxBalance.toString());
     });
   });
 
