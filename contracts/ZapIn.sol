@@ -36,7 +36,7 @@ contract ZapInV1 is ZapBaseV1 {
 
     // Zap in from `fromToken`, to `toPool`.
     LPBought = _zapIn(fromToken, toPool, amountToZap);
-    console.log("Minimum LP was: %s", minimumLPBought);
+    // console.log("Minimum LP was: %s", minimumLPBought);
     console.log("LP Bought: %s", LPBought);
 
     // Revert is LPBought is lesser than minimumLPBought due to high slippage.
@@ -51,13 +51,13 @@ contract ZapInV1 is ZapBaseV1 {
 
     // Swap to intermediate token
     (address intermediate, uint256 intermediateAmount) = _convertToIntermediate(fromToken, token0, token1, amountToZap);
-    console.log("Intermediate is %s", intermediate);
-    console.log("Intermediate amount is %s", intermediateAmount);
+    // console.log("Intermediate is %s", intermediate);
+    // console.log("Intermediate amount is %s", intermediateAmount);
     
     
     // Swap intermediate token to token0, and token1.
     (uint256 token0Amount, uint256 token1Amount) = _swapIntermediateToTarget(intermediate, token0, token1, intermediateAmount);
-    console.log("Token0: %s; Token1: %s", token0Amount, token1Amount);
+    // console.log("Token0: %s; Token1: %s", token0Amount, token1Amount);
     
 
     // Add liquidity
