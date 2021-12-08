@@ -42,10 +42,15 @@ async function getAmountsOut(router, amount, path) {
   return amountsOut[path.length - 1];
 }
 
+function bnDiv1e18(number) {
+  return number.div(ethers.BigNumber.from(10).pow(18));
+}
+
 module.exports = {
   calculateMinimumLP,
   sortTokens,
   makeToken,
   makePair,
   getAmountsOut,
+  bnDiv1e18,
 };
