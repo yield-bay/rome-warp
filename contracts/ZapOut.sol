@@ -30,12 +30,14 @@ contract ZapOutV1 is ZapBaseV1 {
     
 
     (uint256 amount0, uint256 amount1) = _removeLiquidity(fromLP, token0, token1, lpAmount);
-
+    
     if(to == address(0)) {
-      uint256 movrReceived = _swapTokensToMOVR(token0, token1, amount0, amount1, path0, path1);      
+      uint256 movrReceived = _swapTokensToMOVR(token0, token1, amount0, amount1, path0, path1);
+      console.log("MOVR Amount: %s", movrReceived);  
       _sendMOVR(movrReceived, payable(msg.sender));
     } else {
       uint256 amountReceived = _swapToTargetToken(token0, token1, to, amount0, amount1, path0, path1);
+      console.log("Token Amount: %s", amountReceived);
       _sendTokens(to, amountReceived, msg.sender);
     }
 
@@ -88,9 +90,7 @@ contract ZapOutV1 is ZapBaseV1 {
       IWETH(wMOVR).withdraw(amount);
       movrAmount = amount;
     }else{
-      
       _approveToken(token, address(solarRouter), amount);
-    
       movrAmount = solarRouter.swapExactTokensForETH(amount, 1, path, address(this), block.timestamp)[path.length - 1];
     }
     

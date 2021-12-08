@@ -36,7 +36,7 @@ contract ZapInV1 is ZapBaseV1 {
 
     // Zap in from `fromToken`, to `toPool`.
     LPBought = _zapIn(fromToken, toPool, amountToZap);
-    // console.log("Minimum LP was: %s", minimumLPBought);
+    console.log("Minimum LP was: %s", minimumLPBought);
     console.log("LP Bought: %s", LPBought);
 
     // Revert is LPBought is lesser than minimumLPBought due to high slippage.
