@@ -1,7 +1,7 @@
 const { ethers } = require("hardhat");
 
-const SolarPair = require("../artifacts/contracts/interface/solarbeam/ISolarPair.sol/ISolarPair.json");
-const SolarERC20 = require("../artifacts/contracts/interface/solarbeam/ISolarERC20.sol/ISolarERC20.json");
+const SolarPair = require("../../artifacts/contracts/interface/solarbeam/ISolarPair.sol/ISolarPair.json");
+const SolarERC20 = require("../../artifacts/contracts/interface/solarbeam/ISolarERC20.sol/ISolarERC20.json");
 
 const SOLAR_FEE = 25;
 
