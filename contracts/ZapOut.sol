@@ -22,7 +22,7 @@ contract ZapOutV1 is ZapBaseV1 {
 
 
   function zapOut(address fromLP, address to, uint256 lpAmount, address[] memory path0, address[] memory path1) public {
-    
+    require(lpAmount > 0, "ZERO_AMOUNT");
     (address token0, address token1) = _fetchTokensFromPair(fromLP);
     
     // Verify the destination is valid.
