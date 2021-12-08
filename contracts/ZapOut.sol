@@ -81,10 +81,15 @@ contract ZapOutV1 is ZapBaseV1 {
 
   function _swapToMOVR(address token, uint256 amount, address[] memory path) internal returns (uint256 movrAmount) {
     require(amount > 0, "AMOUNT_ZERO");
-
-    _approveToken(token, address(solarRouter), amount);
+    if(token == wMOVR){
+      IWETH(wMOVR).withdraw(amount);
+      movrAmount = amount;
+    }else{
+      _approveToken(token, address(solarRouter), amount);
     
-    movrAmount = solarRouter.swapExactTokensForETH(amount, 1, path, address(this), block.timestamp)[path.length - 1];
+      movrAmount = solarRouter.swapExactTokensForETH(amount, 1, path, address(this), block.timestamp)[path.length - 1];
+    }
+    
     require(movrAmount > 0, "MOVR_AMOUNT_ZERO");
   }
 }
