@@ -107,12 +107,8 @@ contract ZapInV1 is ZapBaseV1 {
 
 
   function _swapTokens(address from, address to, uint256 amount, address[] memory path) internal returns (uint256 amountBought) {
-    // Find the pair address of the tokens that need to be swapped between.
     
-    address pair = solarFactory.getPair(from, to);
-    // If address is 0, no pair exists for the tokens.
-    require(pair != address(0), "NO_PAIR");
-    
+    require(from != to, "INVALID_SWAP");
 
     // Approve the solarRouter to spend the contract's `from` token.
     _approveToken(from, address(solarRouter), amount);

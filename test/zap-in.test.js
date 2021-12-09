@@ -79,12 +79,14 @@ describe("ZapInV1 Test", function () {
         await LP_PAIR.balanceOf(signer.address)
       ).toString()}`
     );
-    // zapIn(address fromToken, address toPool, uint256 amountToZap, uint256 minimumLPBought)
-    const tx = await ZapIn.zapIn(
+
+    await ZapIn.zapIn(
       ethers.constants.AddressZero,
       PAIR_ADDRESS,
       amountToInvest,
       minLP,
+      MOVR_FRAX_PATH,
+      [],
       { value: amountToInvest }
     );
 
@@ -135,7 +137,14 @@ describe("ZapInV1 Test", function () {
     // Approve the ZapIn contract to spend the users' $FRAX
     await FraxToken.connect(signer).approve(ZapIn.address, fraxBalance);
     // zapIn(address fromToken, address toPool, uint256 amountToZap, uint256 minimumLPBought)
-    await ZapIn.zapIn(FRAX, PAIR_ADDRESS, fraxBalance, minLP);
+    await ZapIn.zapIn(
+      FRAX,
+      PAIR_ADDRESS,
+      fraxBalance,
+      minLP,
+      [],
+      [FRAX, WMOVR]
+    );
 
     console.log(
       `Signer LP Balance after tx ${(
@@ -146,23 +155,27 @@ describe("ZapInV1 Test", function () {
     console.log("Signer's $FRAX Balance after ZapIn: ", fraxBalance.toString());
   });
 
-  // TODO
   it("ZapIn from $MOVR to BNB-BUSD LP", async () => {
     const signer = signers[0];
     const PAIR_ADDRESS = await factory.getPair(BNB, BUSD);
     const LP_PAIR = makePair(PAIR_ADDRESS);
     // $MOVR amount to invest.
     const movrToInvest = ethers.BigNumber.from(ethers.utils.parseEther("20"));
+    const paths = {
+      [BNB]: [WMOVR, BNB],
+      [BUSD]: [WMOVR, BNB, BUSD],
+    };
     const amountsOut = {};
-    amountsOut[BNB] = await getAmountsOut(router, movrToInvest.div(2), [
-      WMOVR,
-      BNB,
-    ]);
-
-    amountsOut[BUSD] = await getAmountsOut(router, movrToInvest.div(2), [
-      WMOVR,
-      BUSD,
-    ]);
+    amountsOut[BNB] = await getAmountsOut(
+      router,
+      movrToInvest.div(2),
+      paths[BNB]
+    );
+    amountsOut[BUSD] = await getAmountsOut(
+      router,
+      movrToInvest.div(2),
+      paths[BUSD]
+    );
 
     console.log("BNB Amount", amountsOut[BNB].toString());
     console.log("BUSD Amount", amountsOut[BUSD].toString());
@@ -181,6 +194,8 @@ describe("ZapInV1 Test", function () {
       PAIR_ADDRESS,
       movrToInvest,
       minLP,
+      paths[tokens[0]],
+      paths[tokens[1]],
       { value: movrToInvest }
     );
 
@@ -188,7 +203,6 @@ describe("ZapInV1 Test", function () {
     console.log("LP Balance after the Zap", lpBalance.toString());
   });
 
-  // TODO
   it("ZapIn from $MATIC to WMOVR-FRAX LP", async () => {
     const signer = signers[0];
     const PAIR_ADDRESS = await factory.getPair(WMOVR, FRAX);
@@ -208,18 +222,23 @@ describe("ZapInV1 Test", function () {
 
     let maticBalance = await Matic.balanceOf(signer.address);
 
+    const paths = {
+      [WMOVR]: [MATIC, WMOVR],
+      [FRAX]: [MATIC, WMOVR, FRAX],
+    };
     const amountsOut = {};
 
-    amountsOut[WMOVR] = await getAmountsOut(router, maticBalance.div(2), [
-      MATIC,
-      WMOVR,
-    ]);
+    amountsOut[WMOVR] = await getAmountsOut(
+      router,
+      maticBalance.div(2),
+      paths[WMOVR]
+    );
 
-    amountsOut[FRAX] = await getAmountsOut(router, maticBalance.div(2), [
-      MATIC,
-      WMOVR,
-      FRAX,
-    ]);
+    amountsOut[FRAX] = await getAmountsOut(
+      router,
+      maticBalance.div(2),
+      paths[FRAX]
+    );
     const tokens = sortTokens(WMOVR, FRAX);
 
     const minLP = await calculateMinimumLP(
@@ -233,8 +252,15 @@ describe("ZapInV1 Test", function () {
     console.log("MATIC balance before zap:", maticBalance.toString());
     console.log(`LP Balance before zap: ${lpBalance.toString()}`);
     await Matic.connect(signer).approve(ZapIn.address, maticBalance);
-    // zapIn(address fromToken, address toPool, uint256 amountToZap, uint256 minimumLPBought)
-    await ZapIn.zapIn(MATIC, PAIR_ADDRESS, maticBalance, minLP);
+
+    await ZapIn.zapIn(
+      MATIC,
+      PAIR_ADDRESS,
+      maticBalance,
+      minLP,
+      paths[FRAX],
+      paths[WMOVR]
+    );
     lpBalance = await LP_PAIR.balanceOf(signer.address);
     console.log(`LP Balance after zap: ${lpBalance.toString()}`);
 
