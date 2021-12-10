@@ -70,10 +70,9 @@ contract ZapOutV1 is ZapBaseV1 {
       _approveToken(token0, address(solarRouter), amount0);
       // Convert token0 to token1
       uint256 amountReceived = solarRouter.swapExactTokensForTokens(amount0, 1, path0, address(this), block.timestamp)[path0.length - 1];
+      require(amountReceived > 0, "AMOUNT_RECEIVED_INVALID");
       amount += amountReceived;
     }
-
-    return amount;
   }
 
   function _swapTokensToMOVR(address token0, address token1, uint256 amount0, uint256 amount1, address[] memory path0, address[] memory path1) internal returns (uint256) {
