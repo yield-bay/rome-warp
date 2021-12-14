@@ -7,7 +7,23 @@ import "../interface/solarbeam/ISolarRouter02.sol";
 import "../interface/solarbeam/IERC20.sol";
 import "../interface/solarbeam/IWETH.sol";
 
-contract ZapBaseV1{
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+/**
+- Make the contract ownable
+- Function which allows the owner to pause the contract
+- Modifier to check if contract is paused
+- Event logging
+*/
+
+contract ZapBaseV1 is Ownable {
+
+  bool public paused = false;
+
+  function togglePause() public onlyOwner  {
+    paused = !paused;
+  }
+
   function _fetchTokensFromPair(address pair) internal view returns (address token0, address token1) {
     ISolarPair solarPair = ISolarPair(pair);
     require(address(solarPair) != address(0), "PAIR_NOT_EXIST");
@@ -60,4 +76,9 @@ contract ZapBaseV1{
         // Then, set Approval to the exact amount required. 
         IERC20Solar(token).approve(spender, amount);
     }
+
+  modifier notPaused() {
+    require(!paused, "CONTRACT_PAUSED");
+    _;
+  }
 }
