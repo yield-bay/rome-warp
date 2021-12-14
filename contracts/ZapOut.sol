@@ -11,9 +11,12 @@ import "./base/ZapBase.sol";
 
 import "hardhat/console.sol";
 
+
 contract ZapOutV1 is ZapBaseV1 {
   ISolarRouter02 public solarRouter;
   address public wMOVR;
+
+  event WarpedOut(address sender, address indexed pool, address indexed target, uint256 LPAmount, uint256 targetAmount);
 
   constructor(address _router, address _wMOVR) { 
     solarRouter = ISolarRouter02(_router);
@@ -21,7 +24,7 @@ contract ZapOutV1 is ZapBaseV1 {
   }
 
 
-  function zapOut(address fromLP, address to, uint256 lpAmount, address[] memory path0, address[] memory path1) public {
+  function zapOut(address fromLP, address to, uint256 lpAmount, address[] memory path0, address[] memory path1) public returns (uint256 amountReceived) {
     require(lpAmount > 0, "ZERO_AMOUNT");
     (address token0, address token1) = _fetchTokensFromPair(fromLP);
     
@@ -32,15 +35,17 @@ contract ZapOutV1 is ZapBaseV1 {
     (uint256 amount0, uint256 amount1) = _removeLiquidity(fromLP, token0, token1, lpAmount);
     
     if(to == address(0)) {
-      uint256 movrReceived = _swapTokensToMOVR(token0, token1, amount0, amount1, path0, path1);
-      console.log("MOVR Amount: %s", movrReceived);  
-      _sendMOVR(movrReceived, payable(msg.sender));
+      amountReceived = _swapTokensToMOVR(token0, token1, amount0, amount1, path0, path1);
+      console.log("MOVR Amount: %s", amountReceived);  
+      _sendMOVR(amountReceived, payable(msg.sender));
     } else {
-      uint256 amountReceived = _swapToTargetToken(token0, token1, to, amount0, amount1, path0, path1);
+      amountReceived = _swapToTargetToken(token0, token1, to, amount0, amount1, path0, path1);
       console.log("Token Amount: %s", amountReceived);
       _sendTokens(to, amountReceived, msg.sender);
-    }
 
+    }
+    
+    emit WarpedOut(msg.sender, fromLP, to, lpAmount, amountReceived);
   }
 
   function _removeLiquidity(address pool, address token0, address token1, uint256 lpAmount) internal returns (uint256 amount0, uint256 amount1) {
