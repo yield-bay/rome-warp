@@ -30,8 +30,8 @@ contract ZapInV1 is ZapBaseV1 {
   }
 
   
-  function zapIn(address fromToken, address toPool, uint256 amountToZap, uint256 minimumLPBought, address[] memory path0, address[] memory path1) public payable returns (uint256 LPBought) {
-    
+  function zapIn(address fromToken, address toPool, uint256 amountToZap, uint256 minimumLPBought, address[] memory path0, address[] memory path1) public notPaused payable returns (uint256 LPBought)  {
+
     // transfer the user's address to the contract
     _transferTokenToContract(fromToken, amountToZap);
 
