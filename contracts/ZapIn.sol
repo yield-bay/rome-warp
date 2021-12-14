@@ -21,6 +21,7 @@ contract ZapInV1 is ZapBaseV1 {
   
   address public wMOVR;
   
+  event WarpedIn(address sender, address indexed from, address indexed pool, uint256 amountToWarp, uint256 lpReceived);
 
   constructor(address _router, address _factory, address _wMOVR) { 
     solarRouter = ISolarRouter02(_router);
@@ -41,6 +42,8 @@ contract ZapInV1 is ZapBaseV1 {
 
     // Revert is LPBought is lesser than minimumLPBought due to high slippage.
     require(LPBought >= minimumLPBought, "HIGH_SLIPPAGE");
+
+    emit WarpedIn(msg.sender, fromToken, toPool, amountToZap, LPBought);
   }
 
   function _zapIn(address from, address pool, uint256 amount, address[] memory path0, address[] memory path1) internal returns (uint256) {
