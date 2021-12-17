@@ -9,14 +9,8 @@ import "../interface/solarbeam/IWETH.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-/**
-- Make the contract ownable
-- Function which allows the owner to pause the contract
-- Modifier to check if contract is paused
-- Event logging
-*/
 
-contract ZapBaseV1 is Ownable {
+contract WarpBaseV1 is Ownable {
 
   bool public paused = false;
 

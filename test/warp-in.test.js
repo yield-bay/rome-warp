@@ -24,8 +24,8 @@ const SolarFactory = require("../artifacts/contracts/interface/solarbeam/ISolarF
 
 const deadline = "1922966168";
 
-describe("ZapInV1 Test", function () {
-  let ZapIn;
+describe("WarpInV1 Test", function () {
+  let WarpIn;
   let router;
   let factory;
   let signers;
@@ -33,16 +33,16 @@ describe("ZapInV1 Test", function () {
   beforeEach(async function () {
     signers = await ethers.getSigners();
 
-    const ZapInFactory = await ethers.getContractFactory("ZapInV1");
-    ZapIn = await ZapInFactory.deploy(ROUTER, FACTORY, WMOVR);
+    const WarpInFactory = await ethers.getContractFactory("WarpInV1");
+    WarpIn = await WarpInFactory.deploy(ROUTER, FACTORY, WMOVR);
 
-    await ZapIn.deployed();
+    await WarpIn.deployed();
 
     router = new ethers.Contract(ROUTER, SolarRouter.abi, ethers.provider);
     factory = new ethers.Contract(FACTORY, SolarFactory.abi, ethers.provider);
   });
 
-  it("ZapIn from $MOVR to WMOVR-FRAX LP", async () => {
+  it("Warp-in from $MOVR to WMOVR-FRAX LP", async () => {
     const signer = signers[0];
     const PAIR_ADDRESS = await factory.getPair(WMOVR, FRAX);
     const LP_PAIR = makePair(PAIR_ADDRESS);
@@ -80,7 +80,7 @@ describe("ZapInV1 Test", function () {
       ).toString()}`
     );
 
-    await ZapIn.zapIn(
+    await WarpIn.warpIn(
       ethers.constants.AddressZero,
       PAIR_ADDRESS,
       amountToInvest,
@@ -97,7 +97,7 @@ describe("ZapInV1 Test", function () {
     );
   });
 
-  it("ZapIn from $FRAX to WMOVR-FRAX LP", async () => {
+  it("Warp-in from $FRAX to WMOVR-FRAX LP", async () => {
     const signer = signers[0];
     const PAIR_ADDRESS = await factory.getPair(WMOVR, FRAX);
     const LP_PAIR = makePair(PAIR_ADDRESS);
@@ -134,10 +134,10 @@ describe("ZapInV1 Test", function () {
       ).toString()}`
     );
 
-    // Approve the ZapIn contract to spend the users' $FRAX
-    await FraxToken.connect(signer).approve(ZapIn.address, fraxBalance);
-    // zapIn(address fromToken, address toPool, uint256 amountToZap, uint256 minimumLPBought)
-    await ZapIn.zapIn(
+    // Approve the WarpIn contract to spend the users' $FRAX
+    await FraxToken.connect(signer).approve(WarpIn.address, fraxBalance);
+
+    await WarpIn.warpIn(
       FRAX,
       PAIR_ADDRESS,
       fraxBalance,
@@ -152,10 +152,13 @@ describe("ZapInV1 Test", function () {
       ).toString()}`
     );
     fraxBalance = await FraxToken.balanceOf(signer.address);
-    console.log("Signer's $FRAX Balance after ZapIn: ", fraxBalance.toString());
+    console.log(
+      "Signer's $FRAX Balance after Warp-in: ",
+      fraxBalance.toString()
+    );
   });
 
-  it("ZapIn from $MOVR to BNB-BUSD LP", async () => {
+  it("Warp-in from $MOVR to BNB-BUSD LP", async () => {
     const signer = signers[0];
     const PAIR_ADDRESS = await factory.getPair(BNB, BUSD);
     const LP_PAIR = makePair(PAIR_ADDRESS);
@@ -186,10 +189,10 @@ describe("ZapInV1 Test", function () {
       amountsOut[tokens[1]],
       5
     );
-    // zapIn(address fromToken, address toPool, uint256 amountToZap, uint256 minimumLPBought)
+
     let lpBalance = await LP_PAIR.balanceOf(signer.address);
-    console.log("LP Balance before Zap", lpBalance.toString());
-    await ZapIn.zapIn(
+    console.log("LP Balance before warp-in", lpBalance.toString());
+    await WarpIn.warpIn(
       ethers.constants.AddressZero,
       PAIR_ADDRESS,
       movrToInvest,
@@ -200,10 +203,10 @@ describe("ZapInV1 Test", function () {
     );
 
     lpBalance = await LP_PAIR.balanceOf(signer.address);
-    console.log("LP Balance after the Zap", lpBalance.toString());
+    console.log("LP Balance after the warp", lpBalance.toString());
   });
 
-  it("ZapIn from $MATIC to WMOVR-FRAX LP", async () => {
+  it("Warp-in from $MATIC to WMOVR-FRAX LP", async () => {
     const signer = signers[0];
     const PAIR_ADDRESS = await factory.getPair(WMOVR, FRAX);
     const LP_PAIR = makePair(PAIR_ADDRESS);
@@ -249,11 +252,11 @@ describe("ZapInV1 Test", function () {
     );
 
     let lpBalance = await LP_PAIR.balanceOf(signer.address);
-    console.log("MATIC balance before zap:", maticBalance.toString());
-    console.log(`LP Balance before zap: ${lpBalance.toString()}`);
-    await Matic.connect(signer).approve(ZapIn.address, maticBalance);
+    console.log("MATIC balance before warp:", maticBalance.toString());
+    console.log(`LP Balance before warp: ${lpBalance.toString()}`);
+    await Matic.connect(signer).approve(WarpIn.address, maticBalance);
 
-    await ZapIn.zapIn(
+    await WarpIn.warpIn(
       MATIC,
       PAIR_ADDRESS,
       maticBalance,
@@ -262,9 +265,9 @@ describe("ZapInV1 Test", function () {
       paths[WMOVR]
     );
     lpBalance = await LP_PAIR.balanceOf(signer.address);
-    console.log(`LP Balance after zap: ${lpBalance.toString()}`);
+    console.log(`LP Balance after warp: ${lpBalance.toString()}`);
 
     maticBalance = await Matic.balanceOf(signer.address);
-    console.log(`MATIC Balance after zap: ${maticBalance.toString()}`);
+    console.log(`MATIC Balance after warp: ${maticBalance.toString()}`);
   });
 });

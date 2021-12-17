@@ -7,12 +7,12 @@ import "./interface/solarbeam/ISolarRouter02.sol";
 import "./interface/solarbeam/IERC20.sol";
 import "./interface/solarbeam/IWETH.sol";
 
-import "./base/ZapBase.sol";
+import "./base/WarpBase.sol";
 
 import "hardhat/console.sol";
 
 
-contract ZapOutV1 is ZapBaseV1 {
+contract WarpOutV1 is WarpBaseV1 {
   ISolarRouter02 public solarRouter;
   address public wMOVR;
 
@@ -24,7 +24,7 @@ contract ZapOutV1 is ZapBaseV1 {
   }
 
 
-  function zapOut(address fromLP, address to, uint256 lpAmount, address[] memory path0, address[] memory path1) public notPaused returns (uint256 amountReceived) {
+  function warpOut(address fromLP, address to, uint256 lpAmount, address[] memory path0, address[] memory path1) public notPaused returns (uint256 amountReceived) {
     require(lpAmount > 0, "ZERO_AMOUNT");
     (address token0, address token1) = _fetchTokensFromPair(fromLP);
     

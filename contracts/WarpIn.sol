@@ -1,19 +1,19 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-import "./interface/solarbeam/ISolarFactory.sol";
-import "./interface/solarbeam/ISolarPair.sol";
-import "./interface/solarbeam/ISolarRouter02.sol";
-import "./interface/solarbeam/IERC20.sol";
 import "./interface/solarbeam/IWETH.sol";
+import "./interface/solarbeam/IERC20.sol";
+import "./interface/solarbeam/ISolarPair.sol";
+import "./interface/solarbeam/ISolarFactory.sol";
+import "./interface/solarbeam/ISolarRouter02.sol";
 
-import "./base/ZapBase.sol";
+import "./base/WarpBase.sol";
 
 import "hardhat/console.sol";
 
 
 
-contract ZapInV1 is ZapBaseV1 {
+contract WarpInV1 is WarpBaseV1 {
 
   // SolarBeam contracts
   ISolarRouter02 public solarRouter;
@@ -30,23 +30,23 @@ contract ZapInV1 is ZapBaseV1 {
   }
 
   
-  function zapIn(address fromToken, address toPool, uint256 amountToZap, uint256 minimumLPBought, address[] memory path0, address[] memory path1) public notPaused payable returns (uint256 LPBought)  {
+  function warpIn(address fromToken, address toPool, uint256 amountToWarp, uint256 minimumLPBought, address[] memory path0, address[] memory path1) public notPaused payable returns (uint256 LPBought)  {
 
     // transfer the user's address to the contract
-    _transferTokenToContract(fromToken, amountToZap);
+    _transferTokenToContract(fromToken, amountToWarp);
 
-    // Zap in from `fromToken`, to `toPool`.
-    LPBought = _zapIn(fromToken, toPool, amountToZap, path0, path1);
+    // Warp-in from `fromToken`, to `toPool`.
+    LPBought = _warpIn(fromToken, toPool, amountToWarp, path0, path1);
     console.log("Minimum LP was: %s", minimumLPBought);
     console.log("LP Bought: %s", LPBought);
 
     // Revert is LPBought is lesser than minimumLPBought due to high slippage.
     require(LPBought >= minimumLPBought, "HIGH_SLIPPAGE");
 
-    emit WarpedIn(msg.sender, fromToken, toPool, amountToZap, LPBought);
+    emit WarpedIn(msg.sender, fromToken, toPool, amountToWarp, LPBought);
   }
 
-  function _zapIn(address from, address pool, uint256 amount, address[] memory path0, address[] memory path1) internal returns (uint256) {
+  function _warpIn(address from, address pool, uint256 amount, address[] memory path0, address[] memory path1) internal returns (uint256) {
     (address token0, address token1) = _fetchTokensFromPair(pool);
 
     (uint256 amount0, uint256 amount1) = _convertToTargetTokens(from, token0, token1, amount, path0, path1);

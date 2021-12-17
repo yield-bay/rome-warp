@@ -13,8 +13,8 @@ const {
   sortTokens,
 } = require("./lib/utils");
 
-describe("ZapOutV1 Tests", function () {
-  let ZapOut;
+describe("WarpOutV1 Tests", function () {
+  let WarpOut;
   let router;
   let factory;
   let signers;
@@ -24,15 +24,15 @@ describe("ZapOutV1 Tests", function () {
 
     signers = await ethers.getSigners();
 
-    // Deploy ZapOut contract.
-    const ZapOutFactory = await ethers.getContractFactory("ZapOutV1");
-    ZapOut = await ZapOutFactory.deploy(ROUTER, WMOVR);
-    await ZapOut.deployed();
+    // Deploy WarpOut contract.
+    const WarpOutFactory = await ethers.getContractFactory("WarpOutV1");
+    WarpOut = await WarpOutFactory.deploy(ROUTER, WMOVR);
+    await WarpOut.deployed();
 
-    // Deploy ZapIn contract; To add liquidity easily for testing zapping-out.
-    const ZapInFactory = await ethers.getContractFactory("ZapInV1");
-    ZapIn = await ZapInFactory.deploy(ROUTER, FACTORY, WMOVR);
-    await ZapIn.deployed();
+    // Deploy WarpIn contract; To add liquidity easily for testing warpping-out.
+    const WarpInFactory = await ethers.getContractFactory("WarpInV1");
+    WarpIn = await WarpInFactory.deploy(ROUTER, FACTORY, WMOVR);
+    await WarpIn.deployed();
 
     // SolarBeam DEX contracts
     router = new ethers.Contract(ROUTER, SolarRouter.abi, ethers.provider);
@@ -40,7 +40,7 @@ describe("ZapOutV1 Tests", function () {
     console.log("---- CONTRACT SETUP COMPLETE ----");
   });
 
-  describe("Zap out from WMOVR<>FRAX", function () {
+  describe("Warp-out from WMOVR<>FRAX", function () {
     let signer;
     let PAIR_ADDRESS;
     let LP_PAIR;
@@ -63,7 +63,7 @@ describe("ZapOutV1 Tests", function () {
 
       let lpBalance = await LP_PAIR.balanceOf(signer.address);
 
-      await ZapIn.zapIn(
+      await WarpIn.warpIn(
         ethers.constants.AddressZero,
         PAIR_ADDRESS,
         movrToLP,
@@ -81,11 +81,10 @@ describe("ZapOutV1 Tests", function () {
     it("WMOVR<>FRAX -> MOVR", async () => {
       const LPtoRemove = LPBought;
 
-      // Approve ZapOut contract to control the signer's LP tokens.
-      await LP_PAIR.connect(signer).approve(ZapOut.address, LPtoRemove);
+      // Approve WarpOut contract to control the signer's LP tokens.
+      await LP_PAIR.connect(signer).approve(WarpOut.address, LPtoRemove);
 
-      // zapOut function sig: zapOut(address fromLP, address to, uint256 lpAmount, address[] memory path0, address[] memory path1)
-      await ZapOut.zapOut(
+      await WarpOut.warpOut(
         PAIR_ADDRESS, // address of the liquidity pool of FRAX & WMOVR
         ethers.constants.AddressZero, // address(0) represents $MOVR
         LPtoRemove, // amount of LP tokens to remove
@@ -96,11 +95,10 @@ describe("ZapOutV1 Tests", function () {
     it("WMOVR<>FRAX -> WMOVR", async () => {
       const LPtoRemove = LPBought;
 
-      // Approve ZapOut contract to control the signer's LP tokens.
-      await LP_PAIR.connect(signer).approve(ZapOut.address, LPtoRemove);
+      // Approve WarpOut contract to control the signer's LP tokens.
+      await LP_PAIR.connect(signer).approve(WarpOut.address, LPtoRemove);
 
-      // zapOut function sig: zapOut(address fromLP, address to, uint256 lpAmount, address[] memory path0, address[] memory path1)
-      await ZapOut.zapOut(
+      await WarpOut.warpOut(
         PAIR_ADDRESS, // address of the liquidity pool of FRAX & WMOVR
         WMOVR, // address(0) represents $MOVR
         LPtoRemove, // amount of LP tokens to remove
@@ -116,11 +114,10 @@ describe("ZapOutV1 Tests", function () {
     it("WMOVR<>FRAX -> FRAX", async () => {
       const LPtoRemove = LPBought;
 
-      // Approve ZapOut contract to control the signer's LP tokens.
-      await LP_PAIR.connect(signer).approve(ZapOut.address, LPtoRemove);
+      // Approve WarpOut contract to control the signer's LP tokens.
+      await LP_PAIR.connect(signer).approve(WarpOut.address, LPtoRemove);
 
-      // zapOut function sig: zapOut(address fromLP, address to, uint256 lpAmount, address[] memory path0, address[] memory path1)
-      await ZapOut.zapOut(
+      await WarpOut.warpOut(
         PAIR_ADDRESS, // address of the liquidity pool of FRAX & WMOVR
         FRAX,
         LPtoRemove, // amount of LP tokens to remove
@@ -134,7 +131,7 @@ describe("ZapOutV1 Tests", function () {
     });
   });
 
-  describe("Zap out from BNB<>BUSD", function () {
+  describe("Warp-out from BNB<>BUSD", function () {
     let signer;
     let PAIR_ADDRESS;
     let LP_PAIR;
@@ -186,7 +183,7 @@ describe("ZapOutV1 Tests", function () {
 
       let lpBalance = await LP_PAIR.balanceOf(signer.address);
 
-      await ZapIn.zapIn(
+      await WarpIn.warpIn(
         ethers.constants.AddressZero,
         PAIR_ADDRESS,
         movrToLP,
@@ -205,11 +202,10 @@ describe("ZapOutV1 Tests", function () {
     it("BNB<>BUSD -> MOVR", async () => {
       const LPtoRemove = LPBought;
 
-      // Approve ZapOut contract to control the signer's LP tokens.
-      await LP_PAIR.connect(signer).approve(ZapOut.address, LPtoRemove);
+      // Approve WarpOut contract to control the signer's LP tokens.
+      await LP_PAIR.connect(signer).approve(WarpOut.address, LPtoRemove);
 
-      // zapOut function sig: zapOut(address fromLP, address to, uint256 lpAmount, address[] memory path0, address[] memory path1)
-      await ZapOut.zapOut(
+      await WarpOut.warpOut(
         PAIR_ADDRESS, // address of the liquidity pool of BNB & BUSD
         ethers.constants.AddressZero, // address(0) represents $MOVR
         LPtoRemove, // amount of LP tokens to remove
@@ -222,14 +218,14 @@ describe("ZapOutV1 Tests", function () {
       const BNBToken = makeToken(BNB);
       const LPtoRemove = LPBought;
 
-      await LP_PAIR.connect(signer).approve(ZapOut.address, LPtoRemove);
+      await LP_PAIR.connect(signer).approve(WarpOut.address, LPtoRemove);
 
       console.log(
-        "BNB balance before zap out:",
+        "BNB balance before warp-out:",
         (await BNBToken.balanceOf(signer.address)).toString()
       );
 
-      await ZapOut.zapOut(
+      await WarpOut.warpOut(
         PAIR_ADDRESS,
         BNB,
         LPtoRemove,
@@ -237,7 +233,7 @@ describe("ZapOutV1 Tests", function () {
         paths[BNB][BUSD]
       );
       console.log(
-        "BNB balance after zap out:",
+        "BNB balance after warp-out:",
         (await BNBToken.balanceOf(signer.address)).toString()
       );
     });
@@ -246,14 +242,14 @@ describe("ZapOutV1 Tests", function () {
       const LPtoRemove = LPBought;
       const BUSDToken = makeToken(BUSD);
 
-      await LP_PAIR.connect(signer).approve(ZapOut.address, LPtoRemove);
+      await LP_PAIR.connect(signer).approve(WarpOut.address, LPtoRemove);
 
       console.log(
-        "BUSD balance before zap out:",
+        "BUSD balance before warp-out:",
         (await BUSDToken.balanceOf(signer.address)).toString()
       );
 
-      await ZapOut.zapOut(
+      await WarpOut.warpOut(
         PAIR_ADDRESS,
         BUSD,
         LPtoRemove,
@@ -262,7 +258,7 @@ describe("ZapOutV1 Tests", function () {
       );
 
       console.log(
-        "BUSD balance before zap out:",
+        "BUSD balance before warp-out:",
         (await BUSDToken.balanceOf(signer.address)).toString()
       );
     });
