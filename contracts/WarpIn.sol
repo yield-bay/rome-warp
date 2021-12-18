@@ -145,12 +145,12 @@ contract WarpInV1 is WarpBaseV1 {
 
         // Transfer the residual token0 amount back to the user
         if (token0Amount - amount0 > 0) {
-            IERC20Solar(token0).transfer(msg.sender, token0Amount - amount0);
+            _sendTokens(token0, token0Amount - amount0, msg.sender);
         }
 
         // Transfer the residual token1 amount back to the user
         if (token1Amount - amount1 > 0) {
-            IERC20Solar(token1).transfer(msg.sender, token1Amount - amount1);
+            _sendTokens(token0, token1Amount - amount1, msg.sender);
         }
 
         return LPBought;
