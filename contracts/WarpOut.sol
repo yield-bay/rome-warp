@@ -112,33 +112,11 @@ contract WarpOutV1 is WarpBaseV1 {
         require(target == token0 || target == token1, "DESTINATION_INVALID");
         if (target == token0) {
             amount = amount0;
-
-            _approveToken(token1, address(solarRouter), amount1);
-            // Convert token1 to token0
-            uint256 amountReceived = solarRouter.swapExactTokensForTokens(
-                amount1,
-                1,
-                path1,
-                address(this),
-                block.timestamp
-            )[path1.length - 1];
-            require(amountReceived > 0, "AMOUNT_RECEIVED_INVALID");
-            amount += amountReceived;
+            amount += _swapTokens(token1, token0, amount1, path1);
         } else {
             // target == token1
             amount = amount1;
-
-            _approveToken(token0, address(solarRouter), amount0);
-            // Convert token0 to token1
-            uint256 amountReceived = solarRouter.swapExactTokensForTokens(
-                amount0,
-                1,
-                path0,
-                address(this),
-                block.timestamp
-            )[path0.length - 1];
-            require(amountReceived > 0, "AMOUNT_RECEIVED_INVALID");
-            amount += amountReceived;
+            amount += _swapTokens(token0, token1, amount0, path0);
         }
     }
 
@@ -177,6 +155,28 @@ contract WarpOutV1 is WarpBaseV1 {
         }
 
         require(movrAmount > 0, "MOVR_AMOUNT_ZERO");
+    }
+
+    function _swapTokens(
+        address from,
+        address to,
+        uint256 amount,
+        address[] memory path
+    ) internal returns (uint256 amountBought) {
+        require(from != to, "INVALID_SWAP");
+
+        // Approve the solarRouter to spend the contract's `from` token.
+        _approveToken(from, address(solarRouter), amount);
+
+        // Swap the tokens through solarRouter
+        amountBought = solarRouter.swapExactTokensForTokens(
+            amount,
+            1,
+            path,
+            address(this),
+            block.timestamp
+        )[path.length - 1];
+        require(amountBought > 0, "SWAP_FAILED");
     }
 
     // to receive $MOVR
