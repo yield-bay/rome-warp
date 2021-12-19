@@ -143,15 +143,8 @@ contract WarpInV1 is WarpBaseV1 {
                 block.timestamp
             );
 
-        // Transfer the residual token0 amount back to the user
-        if (token0Amount - amount0 > 0) {
-            _sendTokens(token0, token0Amount - amount0, msg.sender);
-        }
-
-        // Transfer the residual token1 amount back to the user
-        if (token1Amount - amount1 > 0) {
-            _sendTokens(token0, token1Amount - amount1, msg.sender);
-        }
+        _returnResidual(token0, token0Amount, amount0);
+        _returnResidual(token1, token1Amount, amount1);
 
         return LPBought;
     }
@@ -176,5 +169,15 @@ contract WarpInV1 is WarpBaseV1 {
             block.timestamp
         )[path.length - 1];
         require(amountBought > 0, "SWAP_FAILED");
+    }
+
+    function _returnResidual(
+        address token,
+        uint256 initialAmount,
+        uint256 amountUsed
+    ) internal {
+        if (initialAmount - amountUsed > 0) {
+            _sendTokens(token, initialAmount - amountUsed, msg.sender);
+        }
     }
 }
