@@ -128,10 +128,9 @@ contract WarpOutV1 is WarpBaseV1 {
         address[] memory path0,
         address[] memory path1
     ) internal returns (uint256) {
-        uint256 movrAmount1 = _swapToMOVR(token0, amount0, path0);
-        uint256 movrAmount2 = _swapToMOVR(token1, amount1, path1);
-
-        return movrAmount1 + movrAmount2;
+        return
+            _swapToMOVR(token0, amount0, path0) +
+            _swapToMOVR(token1, amount1, path1);
     }
 
     function _swapToMOVR(
