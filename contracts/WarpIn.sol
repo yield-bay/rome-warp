@@ -32,8 +32,8 @@ contract WarpInV1 is WarpBaseV1 {
         address _wMOVR
     ) {
         require(
-            _router != address(0) ||
-                _factory != address(0) ||
+            _router != address(0) &&
+                _factory != address(0) &&
                 _wMOVR != address(0),
             "ZERO_ADDRESS"
         );
@@ -50,6 +50,12 @@ contract WarpInV1 is WarpBaseV1 {
         address[] memory path0,
         address[] memory path1
     ) external payable notPaused returns (uint256 LPBought) {
+        require(
+            fromToken != address(0) && toPool != address(0),
+            "ZERO_ADDRESS"
+        );
+        require(amountToWarp > 0 && minimumLPBought > 0, "ZERO_AMOUNT");
+
         // transfer the user's address to the contract
         _getTokens(fromToken, amountToWarp);
 
