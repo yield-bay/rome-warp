@@ -37,7 +37,6 @@ contract WarpOutV1 is WarpBaseV1 {
         address[] memory path1
     ) external notPaused returns (uint256 amountReceived) {
         require(lpAmount > 0, "ZERO_AMOUNT");
-        require(fromLP != address(0) && to != address(0), "ZERO_ADDRESS");
 
         (address token0, address token1) = _fetchTokensFromPair(fromLP);
         // Verify the destination is valid.

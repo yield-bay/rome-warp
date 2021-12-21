@@ -50,10 +50,7 @@ contract WarpInV1 is WarpBaseV1 {
         address[] memory path0,
         address[] memory path1
     ) external payable notPaused returns (uint256 LPBought) {
-        require(
-            fromToken != address(0) && toPool != address(0),
-            "ZERO_ADDRESS"
-        );
+        require(toPool != address(0), "ZERO_ADDRESS");
         require(amountToWarp > 0 && minimumLPBought > 0, "ZERO_AMOUNT");
 
         // transfer the user's address to the contract
