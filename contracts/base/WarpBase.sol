@@ -72,11 +72,14 @@ contract WarpBaseV1 is Ownable {
         address spender,
         uint256 amount
     ) internal {
+        bool success;
         // Set Approval back to 0.
-        IERC20Solar(token).approve(spender, 0);
+        success = IERC20Solar(token).approve(spender, 0);
+        require(success, "APPROVAL_FAILED");
 
         // Then, set Approval to the exact amount required.
-        IERC20Solar(token).approve(spender, amount);
+        success = IERC20Solar(token).approve(spender, amount);
+        require(success, "APPROVAL_FAILED");
     }
 
     modifier notPaused() {
