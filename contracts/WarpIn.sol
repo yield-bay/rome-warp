@@ -12,7 +12,7 @@ import "./base/WarpBase.sol";
 import "hardhat/console.sol";
 
 /// @author Nightwing from Yieldbay
-/// @notice Add liquidity to any solarbeam.io liquidity pool from any ERC20 token or $MOVR.
+/// @notice Implements the mechanism to add liquidity to any solarbeam.io liquidity pool from any ERC20 token or $MOVR.
 /// @notice Lets you add liquidity from your preferred token in one transaction.
 contract WarpInV1 is WarpBaseV1 {
     // SolarBeam contracts
