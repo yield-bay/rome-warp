@@ -8,8 +8,11 @@ import "../interface/solarbeam/IERC20.sol";
 import "../interface/solarbeam/IWETH.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract WarpBaseV1 is Ownable {
+    using SafeERC20 for IERC20;
+
     bool public paused = false;
 
     function togglePause() external onlyOwner {
@@ -37,12 +40,7 @@ contract WarpBaseV1 is Ownable {
             return;
         }
 
-        bool success = IERC20Solar(from).transferFrom(
-            msg.sender,
-            address(this),
-            amount
-        );
-        require(success, "TRANSFER_FROM_FAILED");
+        IERC20(from).safeTransferFrom(msg.sender, address(this), amount);
     }
 
     function _sendTokens(
@@ -52,8 +50,7 @@ contract WarpBaseV1 is Ownable {
     ) internal {
         require(amount > 0, "ZERO_AMOUNT");
 
-        bool success = IERC20Solar(token).transfer(receiver, amount);
-        require(success, "TRANSFER_FAILED");
+        IERC20(token).safeTransfer(receiver, amount);
     }
 
     function _sendMOVR(uint256 amount, address payable recipient) internal {
