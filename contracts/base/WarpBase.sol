@@ -12,7 +12,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract WarpBaseV1 is Ownable {
     bool public paused = false;
 
-    function togglePause() public onlyOwner {
+    function togglePause() external onlyOwner {
         paused = !paused;
     }
 
