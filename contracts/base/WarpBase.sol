@@ -37,7 +37,12 @@ contract WarpBaseV1 is Ownable {
             return;
         }
 
-        IERC20Solar(from).transferFrom(msg.sender, address(this), amount);
+        bool success = IERC20Solar(from).transferFrom(
+            msg.sender,
+            address(this),
+            amount
+        );
+        require(success, "TRANSFER_FROM_FAILED");
     }
 
     function _sendTokens(
@@ -47,7 +52,8 @@ contract WarpBaseV1 is Ownable {
     ) internal {
         require(amount > 0, "ZERO_AMOUNT");
 
-        IERC20Solar(token).transfer(receiver, amount);
+        bool success = IERC20Solar(token).transfer(receiver, amount);
+        require(success, "TRANSFER_FAILED");
     }
 
     function _sendMOVR(uint256 amount, address payable recipient) internal {
