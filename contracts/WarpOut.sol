@@ -24,6 +24,7 @@ contract WarpOutV1 is WarpBaseV1 {
     );
 
     constructor(address _router, address _wMOVR) {
+        require(_router != address(0) || _wMOVR != address(0), "ZERO_ADDRESS");
         solarRouter = ISolarRouter02(_router);
         wMOVR = _wMOVR;
     }

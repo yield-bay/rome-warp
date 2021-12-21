@@ -31,6 +31,12 @@ contract WarpInV1 is WarpBaseV1 {
         address _factory,
         address _wMOVR
     ) {
+        require(
+            _router != address(0) ||
+                _factory != address(0) ||
+                _wMOVR != address(0),
+            "ZERO_ADDRESS"
+        );
         solarRouter = ISolarRouter02(_router);
         solarFactory = ISolarFactory(_factory);
         wMOVR = _wMOVR;
