@@ -13,10 +13,10 @@ import "hardhat/console.sol";
 
 contract WarpInV1 is WarpBaseV1 {
     // SolarBeam contracts
-    ISolarRouter02 public solarRouter;
-    ISolarFactory public solarFactory;
+    ISolarRouter02 public immutable solarRouter;
+    ISolarFactory public immutable solarFactory;
 
-    address public wMOVR;
+    address public immutable wMOVR;
 
     event WarpedIn(
         address sender,

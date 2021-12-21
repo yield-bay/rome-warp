@@ -12,8 +12,8 @@ import "./base/WarpBase.sol";
 import "hardhat/console.sol";
 
 contract WarpOutV1 is WarpBaseV1 {
-    ISolarRouter02 public solarRouter;
-    address public wMOVR;
+    ISolarRouter02 public immutable solarRouter;
+    address public immutable wMOVR;
 
     event WarpedOut(
         address sender,
@@ -37,6 +37,7 @@ contract WarpOutV1 is WarpBaseV1 {
         address[] memory path1
     ) external notPaused returns (uint256 amountReceived) {
         require(lpAmount > 0, "ZERO_AMOUNT");
+
         (address token0, address token1) = _fetchTokensFromPair(fromLP);
 
         // Verify the destination is valid.
