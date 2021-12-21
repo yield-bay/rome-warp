@@ -49,7 +49,7 @@ contract WarpInV1 is WarpBaseV1 {
         uint256 minimumLPBought,
         address[] memory path0,
         address[] memory path1
-    ) public payable notPaused returns (uint256 LPBought) {
+    ) external payable notPaused returns (uint256 LPBought) {
         // transfer the user's address to the contract
         _getTokens(fromToken, amountToWarp);
 
