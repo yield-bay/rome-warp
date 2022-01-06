@@ -7,6 +7,9 @@ import "./interface/solarbeam/ISolarPair.sol";
 import "./interface/solarbeam/ISolarFactory.sol";
 import "./interface/solarbeam/ISolarRouter02.sol";
 
+import "./interface/romedao/IStaking.sol";
+// import "./interface/romedao/IERC20.sol";
+
 import "./base/WarpBase.sol";
 
 import "hardhat/console.sol";
@@ -19,17 +22,21 @@ contract WarpInV1 is WarpBaseV1 {
     ISolarRouter02 public immutable solarRouter;
     ISolarFactory public immutable solarFactory;
 
-    address public immutable wMOVR;
+    IStaking public immutable romeStakingHelper;
 
-    /// @notice Event to signify a "warpIn"
-    /// @dev Emitted when liquidity is added successfully to a liquidity pool
-    /// @dev If `from` is address(0), it represents $MOVR.
-    /// @param sender address that called the `warpIn` function.
-    /// @param from address of the token to provided by `sender` to add liquidity.
-    /// @param pool address of the liquidity pool in which liquidity is added.
-    /// @param amountToWarp amount of `from` token to add liquidity with.
-    /// @param lpReceived amount of LP tokens of `pool` received by the `sender`.
+    address public immutable wMOVR;
+    address public immutable ROME;
+    address public immutable sROME;
+
     event WarpedIn(
+        address sender,
+        address indexed from,
+        address indexed pool,
+        uint256 amountToWarp,
+        uint256 lpReceived
+    );
+
+    event StakedROME(
         address sender,
         address indexed from,
         address indexed pool,
@@ -40,7 +47,10 @@ contract WarpInV1 is WarpBaseV1 {
     constructor(
         address _router,
         address _factory,
-        address _wMOVR
+        address _romeStakingHelper,
+        address _wMOVR,
+        address _ROME,
+        address _sROME
     ) {
         require(
             _router != address(0) &&
@@ -50,73 +60,67 @@ contract WarpInV1 is WarpBaseV1 {
         );
         solarRouter = ISolarRouter02(_router);
         solarFactory = ISolarFactory(_factory);
+        romeStakingHelper = IStaking(_romeStakingHelper);
         wMOVR = _wMOVR;
+        ROME = _ROME;
+        sROME = _sROME;
     }
 
-    /// @notice Function to add liquidity to the desired liquidity pool from an arbitrary ERC-20 token, or $MOVR.
-    /// @dev if `fromToken` is address(0), represents that liquidity needs to be added from $MOVR.
-    /// @dev `minimumLPBought` is a target value calculated off-chain. It acts as a check to protect against high-slippage scenarios.
-    /// @dev `path0` and `path1` are swap paths passed directly to SolarbeamRouter for swaps. They're calculated off-chain to find the best swap route and increase capital effeciency.
-    /// @param fromToken address of the token to add liquidity with.
-    /// @param toPool address of the liquidity pool to add liquidity in.
-    /// @param amountToWarp amount of `fromToken` to add liquidity with.
-    /// @param minimumLPBought minimum amount of LP tokens that should be received by adding liquidity; Calculated off-chain.
-    /// @param path0 an array of addresses that represent the swap path for token0 in `toPool`; Calculated off-chain.
-    /// @param path1 an array of addresses that represent the swap path for token1 in `toPool`; Calculated off-chain.
-    /// @return LPBought amount of LP tokens of `toPool` liquidity pool obtained by adding liquidity.
     function warpIn(
         address fromToken,
-        address toPool,
+        // address toToken,
         uint256 amountToWarp,
-        uint256 minimumLPBought,
-        address[] memory path0,
-        address[] memory path1
-    ) external payable notPaused returns (uint256 LPBought) {
-        require(toPool != address(0), "ZERO_ADDRESS");
-        require(amountToWarp > 0 && minimumLPBought > 0, "ZERO_AMOUNT");
+        uint256 minimumTokenBought,
+        address[] memory path
+        // address[] memory path0,
+        // address[] memory path1
+    ) external payable notPaused returns (uint256) {
+        // require(toToken != address(0), "ZERO_ADDRESS");
+        require(amountToWarp > 0 && minimumTokenBought > 0, "ZERO_AMOUNT");
 
         // transfer the user's address to the contract
         _getTokens(fromToken, amountToWarp);
 
-        // Warp-in from `fromToken`, to `toPool`.
-        LPBought = _warpIn(fromToken, toPool, amountToWarp, path0, path1);
-        console.log("Minimum LP was: %s", minimumLPBought);
-        console.log("LP Bought: %s", LPBought);
+        // Warp-in from `fromToken`, to `toToken`.
+        (uint256 tokenBought, bool staked) = _warpIn(fromToken, ROME, amountToWarp, path, msg.sender);
+        console.log("Minimum tokens were: %s", minimumTokenBought);
+        console.log("Tokens Bought: %s", tokenBought);
 
-        // Revert is LPBought is lesser than minimumLPBought due to high slippage.
-        require(LPBought >= minimumLPBought, "HIGH_SLIPPAGE");
+        // Revert is tokenBought is lesser than minimumTokenBought due to high slippage.
+        require(tokenBought >= minimumTokenBought, "HIGH_SLIPPAGE");
 
-        emit WarpedIn(msg.sender, fromToken, toPool, amountToWarp, LPBought);
+        emit WarpedIn(msg.sender, fromToken, ROME, amountToWarp, tokenBought);
+        if (staked) {
+            emit StakedROME(msg.sender, fromToken, sROME, amountToWarp, tokenBought);   
+        }
+        return tokenBought;
     }
 
-    /// @notice Converts the `from` token to the tokens required to add liquidity in the `pool`, and adds liquidity in the `pool`.
-    /// @dev An internal wrapper function that groups functionality of converting to the target tokens & adding liquidity.
-    /// @dev if `from` is address(0), represents $MOVR.
-    /// @param from address of the token to add liquidity with.
-    /// @param pool address of the liquidity pool to add liquidity in.
-    /// @param amount the amount of `from` tokens to add liquidity with.
-    /// @param path0 an array of addresses that represent the swap path for token0 in `toPool`; Calculated off-chain.
-    /// @param path1 an array of addresses that represent the swap path for token1 in `toPool`; Calculated off-chain.
-    /// @return amount of LP tokens received from adding liquidity in the `pool`.
     function _warpIn(
         address from,
-        address pool,
+        address to,
+        // address pool,
         uint256 amount,
-        address[] memory path0,
-        address[] memory path1
-    ) internal returns (uint256) {
-        (address token0, address token1) = _fetchTokensFromPair(pool);
+        address[] memory path,
+        address user
+        // address[] memory path0,
+        // address[] memory path1
+    ) internal returns (uint256, bool) {
+        uint256 amountBought =  _convertToken(from, to, amount, path);
+        bool staked = _stakeToken(amountBought, user);
+        return (amountBought, staked);
+        // (address token0, address token1) = _fetchTokensFromPair(pool);
 
-        (uint256 amount0, uint256 amount1) = _convertToTargetTokens(
-            from,
-            token0,
-            token1,
-            amount,
-            path0,
-            path1
-        );
+        // (uint256 amount0, uint256 amount1) = _convertToTargetTokens(
+        //     from,
+        //     token0,
+        //     token1,
+        //     amount,
+        //     path0,
+        //     path1
+        // );
 
-        return _addLiquidityForPair(token0, token1, amount0, amount1);
+        // return _addLiquidityForPair(token0, token1, amount0, amount1);
     }
 
     /// @notice Converts the `from` token to `token0` and `token1`.
@@ -177,6 +181,10 @@ contract WarpInV1 is WarpBaseV1 {
         }
         require(from != to, "INVALID_SWAP");
         return _swapTokens(from, to, amount, path);
+    }
+
+    function _stakeToken(uint256 _amount, address user) internal returns (bool) {
+        return romeStakingHelper.stake(_amount, user);
     }
 
     /// @notice Adds liquidity to the liquidity pool that exists between `token0` and `token1`
