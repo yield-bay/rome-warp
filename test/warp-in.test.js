@@ -1,273 +1,116 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-const {
-  calculateMinimumLP,
-  sortTokens,
-  makePair,
-  makeToken,
-  getAmountsOut,
-} = require("./lib/utils.js");
+// const {
+//   calculateMinimumLP,
+//   sortTokens,
+//   makePair,
+//   makeToken,
+//   getAmountsOut,
+// } = require("./lib/utils.js");
 
 const {
   ROUTER,
   FACTORY,
+  HELPER,
+  STAKING,
   WMOVR,
-  FRAX,
-  MATIC,
-  BNB,
-  BUSD,
+  ROME,
+  sROME,
 } = require("./lib/constants");
 
-const SolarRouter = require("../artifacts/contracts/interface/solarbeam/ISolarRouter02.sol/ISolarRouter02.json");
-const SolarFactory = require("../artifacts/contracts/interface/solarbeam/ISolarFactory.sol/ISolarFactory.json");
+// const SolarRouter = require("../artifacts/contracts/interface/solarbeam/ISolarRouter02.sol/ISolarRouter02.json");
+// const SolarFactory = require("../artifacts/contracts/interface/solarbeam/ISolarFactory.sol/ISolarFactory.json");
+const IsROME = require("../artifacts/contracts/interface/romedao/IsROME.sol/IsROME.json");
+const IROME = require("../artifacts/contracts/interface/romedao/IROME.sol/IROME.json");
 
-const deadline = "1922966168";
+// const deadline = "1922966168";
 
 describe("WarpInV1 Test", function () {
   let WarpIn;
-  let router;
-  let factory;
+  // let router;
+  // let factory;
+  let srome;
+  let rome;
   let signers;
+  let prov;
 
   beforeEach(async function () {
     signers = await ethers.getSigners();
+    prov = ethers.getDefaultProvider();
 
     const WarpInFactory = await ethers.getContractFactory("WarpInV1");
-    WarpIn = await WarpInFactory.deploy(ROUTER, FACTORY, WMOVR);
+    WarpIn = await WarpInFactory.deploy(
+      ROUTER,
+      FACTORY,
+      STAKING,
+      HELPER,
+      WMOVR,
+      ROME,
+      sROME
+    );
 
     await WarpIn.deployed();
 
-    router = new ethers.Contract(ROUTER, SolarRouter.abi, ethers.provider);
-    factory = new ethers.Contract(FACTORY, SolarFactory.abi, ethers.provider);
+    // router = new ethers.Contract(ROUTER, SolarRouter.abi, ethers.provider);
+    // factory = new ethers.Contract(FACTORY, SolarFactory.abi, ethers.provider);
+    srome = new ethers.Contract(sROME, IsROME.abi, ethers.provider);
+    rome = new ethers.Contract(ROME, IROME.abi, ethers.provider);
   });
 
-  it("Warp-in from $MOVR to WMOVR-FRAX LP", async () => {
+  it("Warp-in from $MOVR to sROME", async () => {
     const signer = signers[0];
-    const PAIR_ADDRESS = await factory.getPair(WMOVR, FRAX);
-    const LP_PAIR = makePair(PAIR_ADDRESS);
+    // console.log("signer", signer);
+    // const PAIR_ADDRESS = await factory.getPair(WMOVR, FRAX);
+    // const LP_PAIR = makePair(PAIR_ADDRESS);
 
-    /**
-     * 1. Find estimate of token0: wMOVR
-     * 2. Find estimate of token1: FRAX
-     */
+    const amountToInvest = ethers.BigNumber.from(ethers.utils.parseEther("2"));
 
-    const amountToInvest = ethers.BigNumber.from(
-      ethers.utils.parseEther("0.002")
-    );
-
-    // Find MOVR <> FRAX
-    const MOVR_FRAX_PATH = [WMOVR, FRAX];
-    const token0Amount = await getAmountsOut(
-      router,
-      amountToInvest.div(2),
-      MOVR_FRAX_PATH
-    );
-
-    // As $MOVR gets converted to $WMOVR 1:1
-    const token1Amount = amountToInvest.div(2);
-
-    const minLP = await calculateMinimumLP(
-      LP_PAIR,
-      token0Amount,
-      token1Amount,
-      3
-    );
-
+    console.log("Signer address: %s", signer.address);
     console.log(
-      `Signer LP Balance before tx ${(
-        await LP_PAIR.balanceOf(signer.address)
+      `Signer srome Balance before tx ${(
+        await srome.balanceOf(signer.address)
       ).toString()}`
     );
+    console.log(
+      `Signer rome Balance before tx ${(
+        await rome.balanceOf(signer.address)
+      ).toString()}`
+    );
+    console.log("provbal", parseInt(await prov.getBalance(signer.address), 16));
+    // console.log("signermovrbal", await signer.getBalance(signer.address));
 
-    await WarpIn.warpIn(
+    // const approveTx = await srome
+    //   .connect(signer)
+    //   .approve("0x6f7d019502e17f1ef24ac67a260c65dd23b759f1", 4);
+    // await approveTx.wait();
+
+    // const transferTx = await srome
+    //   .connect(signer)
+    //   .transfer(signer.address, 1000);
+    // await transferTx.wait();
+
+    const tb = await WarpIn.connect(signer).warpIn(
       ethers.constants.AddressZero,
-      PAIR_ADDRESS,
+      // PAIR_ADDRESS,
       amountToInvest,
-      minLP,
-      MOVR_FRAX_PATH,
-      [],
+      // minLP,
+      [WMOVR, ROME],
       { value: amountToInvest }
     );
+    console.log("tb", parseInt(tb.value, 16));
 
     console.log(
-      `Signer LP Balance after tx ${(
-        await LP_PAIR.balanceOf(signer.address)
+      `Signer srome Balance after tx ${(
+        await srome.balanceOf(signer.address)
       ).toString()}`
     );
-  });
-
-  it("Warp-in from $FRAX to WMOVR-FRAX LP", async () => {
-    const signer = signers[0];
-    const PAIR_ADDRESS = await factory.getPair(WMOVR, FRAX);
-    const LP_PAIR = makePair(PAIR_ADDRESS);
-    // $MOVR amount to invest.
-    const amountToInvest = ethers.BigNumber.from(
-      ethers.utils.parseEther("0.002")
-    );
-
-    // Convert $MOVR to $FRAX
-    await router
-      .connect(signer)
-      .swapExactETHForTokens(1, [WMOVR, FRAX], signer.address, deadline, {
-        value: amountToInvest,
-      });
-
-    // FRAX token address
-    const FraxToken = makeToken(FRAX);
-
-    let fraxBalance = await FraxToken.balanceOf(signer.address);
-    console.log("Signer's $FRAX Balance: ", fraxBalance.toString());
-
-    // Individual token amounts to invest
-    const amount0 = fraxBalance.div(2);
-    const amount1 = await getAmountsOut(router, fraxBalance.div(2), [
-      FRAX,
-      WMOVR,
-    ]);
-
-    const minLP = await calculateMinimumLP(LP_PAIR, amount0, amount1, 3);
-
     console.log(
-      `Signer LP Balance before tx ${(
-        await LP_PAIR.balanceOf(signer.address)
+      `Signer rome Balance after tx ${(
+        await rome.balanceOf(signer.address)
       ).toString()}`
     );
-
-    // Approve the WarpIn contract to spend the users' $FRAX
-    await FraxToken.connect(signer).approve(WarpIn.address, fraxBalance);
-
-    await WarpIn.warpIn(
-      FRAX,
-      PAIR_ADDRESS,
-      fraxBalance,
-      minLP,
-      [],
-      [FRAX, WMOVR]
-    );
-
-    console.log(
-      `Signer LP Balance after tx ${(
-        await LP_PAIR.balanceOf(signer.address)
-      ).toString()}`
-    );
-    fraxBalance = await FraxToken.balanceOf(signer.address);
-    console.log(
-      "Signer's $FRAX Balance after Warp-in: ",
-      fraxBalance.toString()
-    );
-  });
-
-  it("Warp-in from $MOVR to BNB-BUSD LP", async () => {
-    const signer = signers[0];
-    const PAIR_ADDRESS = await factory.getPair(BNB, BUSD);
-    const LP_PAIR = makePair(PAIR_ADDRESS);
-    // $MOVR amount to invest.
-    const movrToInvest = ethers.BigNumber.from(ethers.utils.parseEther("20"));
-    const paths = {
-      [BNB]: [WMOVR, BNB],
-      [BUSD]: [WMOVR, BNB, BUSD],
-    };
-    const amountsOut = {};
-    amountsOut[BNB] = await getAmountsOut(
-      router,
-      movrToInvest.div(2),
-      paths[BNB]
-    );
-    amountsOut[BUSD] = await getAmountsOut(
-      router,
-      movrToInvest.div(2),
-      paths[BUSD]
-    );
-
-    console.log("BNB Amount", amountsOut[BNB].toString());
-    console.log("BUSD Amount", amountsOut[BUSD].toString());
-    const tokens = sortTokens(BNB, BUSD);
-    const minLP = await calculateMinimumLP(
-      LP_PAIR,
-      amountsOut[tokens[0]],
-      amountsOut[tokens[1]],
-      5
-    );
-
-    let lpBalance = await LP_PAIR.balanceOf(signer.address);
-    console.log("LP Balance before warp-in", lpBalance.toString());
-    await WarpIn.warpIn(
-      ethers.constants.AddressZero,
-      PAIR_ADDRESS,
-      movrToInvest,
-      minLP,
-      paths[tokens[0]],
-      paths[tokens[1]],
-      { value: movrToInvest }
-    );
-
-    lpBalance = await LP_PAIR.balanceOf(signer.address);
-    console.log("LP Balance after the warp", lpBalance.toString());
-  });
-
-  it("Warp-in from $MATIC to WMOVR-FRAX LP", async () => {
-    const signer = signers[0];
-    const PAIR_ADDRESS = await factory.getPair(WMOVR, FRAX);
-    const LP_PAIR = makePair(PAIR_ADDRESS);
-
-    const movrToInvest = ethers.BigNumber.from(
-      ethers.utils.parseEther("0.002")
-    );
-
-    await router
-      .connect(signer)
-      .swapExactETHForTokens(1, [WMOVR, MATIC], signer.address, deadline, {
-        value: movrToInvest,
-      });
-
-    const Matic = makeToken(MATIC);
-
-    let maticBalance = await Matic.balanceOf(signer.address);
-
-    const paths = {
-      [WMOVR]: [MATIC, WMOVR],
-      [FRAX]: [MATIC, WMOVR, FRAX],
-    };
-    const amountsOut = {};
-
-    amountsOut[WMOVR] = await getAmountsOut(
-      router,
-      maticBalance.div(2),
-      paths[WMOVR]
-    );
-
-    amountsOut[FRAX] = await getAmountsOut(
-      router,
-      maticBalance.div(2),
-      paths[FRAX]
-    );
-    const tokens = sortTokens(WMOVR, FRAX);
-
-    const minLP = await calculateMinimumLP(
-      LP_PAIR,
-      amountsOut[tokens[0]],
-      amountsOut[tokens[1]],
-      5
-    );
-
-    let lpBalance = await LP_PAIR.balanceOf(signer.address);
-    console.log("MATIC balance before warp:", maticBalance.toString());
-    console.log(`LP Balance before warp: ${lpBalance.toString()}`);
-    await Matic.connect(signer).approve(WarpIn.address, maticBalance);
-
-    await WarpIn.warpIn(
-      MATIC,
-      PAIR_ADDRESS,
-      maticBalance,
-      minLP,
-      paths[FRAX],
-      paths[WMOVR]
-    );
-    lpBalance = await LP_PAIR.balanceOf(signer.address);
-    console.log(`LP Balance after warp: ${lpBalance.toString()}`);
-
-    maticBalance = await Matic.balanceOf(signer.address);
-    console.log(`MATIC Balance after warp: ${maticBalance.toString()}`);
+    console.log("provbal", parseInt(await prov.getBalance(signer.address), 16));
+    // console.log("signermovrbal", await signer.getBalance(signer.address));
   });
 });

@@ -8,6 +8,7 @@ import "./interface/solarbeam/ISolarFactory.sol";
 import "./interface/solarbeam/ISolarRouter02.sol";
 
 import "./interface/romedao/IStaking.sol";
+import "./interface/romedao/IsROME.sol";
 // import "./interface/romedao/IERC20.sol";
 
 import "./base/WarpBase.sol";
@@ -23,10 +24,23 @@ contract WarpInV1 is WarpBaseV1 {
     ISolarFactory public immutable solarFactory;
 
     IStaking public immutable romeStakingHelper;
+    // IStaking public immutable romeStaking;
+    IsROME public immutable sROMEContract;
 
     address public immutable wMOVR;
-    address public immutable ROME;
-    address public immutable sROME;
+    // address public immutable ROME;
+    // address public immutable sROME;
+
+    //////////////////////////
+    /**
+     * 
+     */
+
+    address public staking = 0x6f7D019502e17F1ef24AC67a260c65Dd23b759f1;
+
+    address public constant ROME = 0x4a436073552044D5f2f49B176853ad3Ad473d9d6;
+
+    address public sROME = 0x89F52002E544585b42F8c7Cf557609CA4c8ce12A;
 
     event WarpedIn(
         address sender,
@@ -47,6 +61,7 @@ contract WarpInV1 is WarpBaseV1 {
     constructor(
         address _router,
         address _factory,
+        address _romeStaking,
         address _romeStakingHelper,
         address _wMOVR,
         address _ROME,
@@ -61,8 +76,10 @@ contract WarpInV1 is WarpBaseV1 {
         solarRouter = ISolarRouter02(_router);
         solarFactory = ISolarFactory(_factory);
         romeStakingHelper = IStaking(_romeStakingHelper);
+        // romeStakingHelper = IStaking(_romeStaking, _ROME);
+        sROMEContract = IsROME(_sROME);
         wMOVR = _wMOVR;
-        ROME = _ROME;
+        // ROME = _ROME;
         sROME = _sROME;
     }
 
@@ -70,24 +87,22 @@ contract WarpInV1 is WarpBaseV1 {
         address fromToken,
         // address toToken,
         uint256 amountToWarp,
-        uint256 minimumTokenBought,
+        // uint256 minimumTokenBought,
         address[] memory path
-        // address[] memory path0,
-        // address[] memory path1
     ) external payable notPaused returns (uint256) {
         // require(toToken != address(0), "ZERO_ADDRESS");
-        require(amountToWarp > 0 && minimumTokenBought > 0, "ZERO_AMOUNT");
+        // require(amountToWarp > 0 && minimumTokenBought > 0, "ZERO_AMOUNT");
 
         // transfer the user's address to the contract
         _getTokens(fromToken, amountToWarp);
 
         // Warp-in from `fromToken`, to `toToken`.
         (uint256 tokenBought, bool staked) = _warpIn(fromToken, ROME, amountToWarp, path, msg.sender);
-        console.log("Minimum tokens were: %s", minimumTokenBought);
+        // console.log("Minimum tokens were: %s", minimumTokenBought);
         console.log("Tokens Bought: %s", tokenBought);
 
         // Revert is tokenBought is lesser than minimumTokenBought due to high slippage.
-        require(tokenBought >= minimumTokenBought, "HIGH_SLIPPAGE");
+        // require(tokenBought >= minimumTokenBought, "HIGH_SLIPPAGE");
 
         emit WarpedIn(msg.sender, fromToken, ROME, amountToWarp, tokenBought);
         if (staked) {
@@ -107,6 +122,7 @@ contract WarpInV1 is WarpBaseV1 {
         // address[] memory path1
     ) internal returns (uint256, bool) {
         uint256 amountBought =  _convertToken(from, to, amount, path);
+        console.log("CTamountBought", amountBought);
         bool staked = _stakeToken(amountBought, user);
         return (amountBought, staked);
         // (address token0, address token1) = _fetchTokensFromPair(pool);
@@ -184,7 +200,13 @@ contract WarpInV1 is WarpBaseV1 {
     }
 
     function _stakeToken(uint256 _amount, address user) internal returns (bool) {
-        return romeStakingHelper.stake(_amount, user);
+        // sROMEContract.approve(address(0x6f7D019502e17F1ef24AC67a260c65Dd23b759f1), _amount);
+        _approveToken(ROME, staking, type(uint256).max);
+        console.log("amount is: %s, user: %s, msg.sender: %s", _amount, user, msg.sender);
+        IStaking(staking).stake(_amount, msg.sender);
+        IStaking(staking).claim(msg.sender);
+        // return romeStakingHelper.stake(_amount, user);
+        return true;
     }
 
     /// @notice Adds liquidity to the liquidity pool that exists between `token0` and `token1`
