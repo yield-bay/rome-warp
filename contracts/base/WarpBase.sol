@@ -45,16 +45,40 @@ contract WarpBaseV1 is Ownable {
     /// @dev Used by WarpOut to obtain the LP tokens that the address wants to warp-out.
     /// @param from address of the token to transfer to the contract.
     /// @param amount the amount of `from` tokens to transfer to the contract.
-    function _getTokens(address from, uint256 amount) internal {
+    function _getTokens(address from, uint256 amount)
+        internal
+        virtual
+        returns (uint256)
+    {
         require(amount > 0, "ZERO_AMOUNT");
 
         // If fromToken is zero address, transfer $MOVR
         if (from == address(0)) {
             require(amount == msg.value, "MOVR_NEQ_AMOUNT");
-            return;
+            return amount;
         }
 
         IERC20(from).safeTransferFrom(msg.sender, address(this), amount);
+
+        return amount;
+    }
+
+    function _pullTokens(address token, uint256 amount)
+        internal
+        virtual
+        returns (uint256)
+    {
+        // require(amount > 0, "ZERO_AMOUNT");
+
+        // // If token is zero address, transfer $MOVR
+        // if (token == address(0)) {
+        //     require(amount == msg.value, "MOVR_NEQ_AMOUNT");
+        //     return amount;
+        // }
+
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+
+        return amount;
     }
 
     /// @notice Sends an ERC20 token from the contract to the receiver
