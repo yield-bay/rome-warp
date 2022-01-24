@@ -23,10 +23,6 @@ contract RomeWarpV1 is WarpBaseV1 {
     address public immutable ROME;
     address public immutable sROME;
 
-    // address public staking = 0x6f7D019502e17F1ef24AC67a260c65Dd23b759f1;
-    // address public constant ROME = 0x4a436073552044D5f2f49B176853ad3Ad473d9d6;
-    // address public sROME = 0x89F52002E544585b42F8c7Cf557609CA4c8ce12A;
-
     /////////////// Events ///////////////
 
     // Emitted when `sender` Warps In
@@ -59,35 +55,44 @@ contract RomeWarpV1 is WarpBaseV1 {
         sROME = _sROME;
     }
 
+    /// @notice Function to stake ROME from an arbitrary ERC-20 token, or $MOVR.
+    /// @param fromToken address of the token to add liquidity with.
+    /// @param amountIn amount of `fromToken` to add liquidity with.
+    /// @param minToToken minimum amount of $sROME that should be received by staking $ROME; Calculated off-chain.
+    /// @param path an array of addresses that represent the swap path from `fromToken` to $ROME; Calculated off-chain.
     function warpIn(
         address fromToken,
         uint256 amountIn,
-        // address toToken,
         uint256 minToToken,
         address[] memory path
     ) external payable notPaused returns (uint256 ROMERec) {
-        // require(toToken == sROME, "toToken must be sROME");
-
         uint256 toInvest = _getTokens(fromToken, amountIn);
 
         uint256 tokensBought = _convertToken(fromToken, ROME, toInvest, path);
 
-        ROMERec = _enterRome(tokensBought);
-        console.log("_enterRome.ROMERec:", ROMERec);
-        require(ROMERec > minToToken, "High Slippage");
+        bool staked;
+        (staked, ROMERec) = _enterRome(tokensBought);
+        if (!staked) {
+            console.log("couldn't stake ROME");
+        } else {
+            console.log("_enterRome.ROMERec:", ROMERec);
+            require(ROMERec > minToToken, "High Slippage");
 
-        emit WarpIn(msg.sender, sROME, ROMERec);
+            emit WarpIn(msg.sender, sROME, ROMERec);
+        }
     }
 
+    /// @notice Function to unstake $ROME and receive an arbitrary ERC-20 token, or $MOVR.
+    /// @param amountOut amount to $ROME to unstake.
+    /// @param toToken address of the target token.
+    /// @param minToTokens minimum acceptable quantity of tokens to receive. Reverts otherwise.
+    /// @param path an array of addresses that represent the swap path from $ROME to `toToken`; Calculated off-chain.
     function warpOut(
-        // address fromToken,
         uint256 amountOut,
         address toToken,
         uint256 minToTokens,
         address[] memory path
     ) external notPaused returns (uint256 tokensRec) {
-        // require(fromToken == sROME, "fromToken must be sROME");
-
         amountOut = _pullTokens(sROME, amountOut);
         uint256 ROMERec = _exitRome(amountOut);
         console.log("_exitRome.ROMERec", ROMERec);
@@ -105,13 +110,13 @@ contract RomeWarpV1 is WarpBaseV1 {
         emit WarpOut(msg.sender, toToken, tokensRec);
     }
 
-    function _enterRome(uint256 amount) internal returns (uint256) {
+    function _enterRome(uint256 amount) internal returns (bool, uint256) {
         _approveToken(ROME, staking, amount);
 
-        IStaking(staking).stake(amount, msg.sender);
-        IStaking(staking).claim(msg.sender);
+        bool staked = IStaking(staking).stake(amount, msg.sender);
+        if (staked) IStaking(staking).claim(msg.sender);
 
-        return amount;
+        return (staked, amount);
     }
 
     function _exitRome(uint256 amount) internal returns (uint256) {
